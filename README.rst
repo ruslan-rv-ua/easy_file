@@ -3,6 +3,10 @@ Easy File
 =========
 
 
+.. image:: https://pyup.io/repos/github/ruslan-rv-ua/easy_file/python-3-shield.svg
+     :target: https://pyup.io/repos/github/ruslan-rv-ua/easy_file/
+     :alt: Python 3
+
 .. image:: https://img.shields.io/pypi/v/easy_file.svg
         :target: https://pypi.python.org/pypi/easy_file
 
