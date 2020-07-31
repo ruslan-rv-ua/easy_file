@@ -28,6 +28,16 @@ Features
 
 * TODO
 
+Install
+-------
+
+* TODO
+
+Quickstart
+----------
+
+* TODO
+
 Credits
 -------
 
