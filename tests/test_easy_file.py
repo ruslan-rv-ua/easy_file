@@ -5,7 +5,8 @@
 import pytest
 
 
-from easy_file import easy_file
+# from easy_file import easy_file
+from easy_file import TextFile, JSONFile, YAMLFile
 
 
 @pytest.fixture
@@ -18,7 +19,13 @@ def response():
     # return requests.get('https://github.com/audreyr/cookiecutter-pypackage')
 
 
-def test_content(response):
-    """Sample pytest test function with the pytest fixture as an argument."""
-    # from bs4 import BeautifulSoup
-    # assert 'GitHub' in BeautifulSoup(response.content).title.string
+def test_JSONFile(response: int) -> list:
+    from pathlib import Path
+
+    fname = Path(__file__).parent / "some.json"
+    f = JSONFile(fname)
+    data = {"key": [1, 2, 3]}
+    f.save(data)
+    loaded = JSONFile(fname).load()
+    assert loaded == data
+
