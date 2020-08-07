@@ -1,55 +1,35 @@
-import json
+import pathlib
+
 import yaml
-try:
-	from yaml import CLoader as YLoader, CDumper as YDumper
-except ImportError:
-	from yaml import Loader as YLoader, Dumper as YDumper
+
+import orjson
 
 
-class TextFile:
-	def __init__(self, file_path):
-		self.file_path = file_path
-		
-	def load(self):
-		with open(self.file_path, encoding='utf8') as f:
-			text = f.read()
-		return text
-		
-	def save(self, text):
-		with open(self.file_path, 'w', encoding='utf8') as f:
-			f.write(text)
+class EasyFile(type(pathlib.Path())):
+    def open(self, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
+        if encoding is None and "b" not in mode:
+            encoding = "utf-8"
+        return super().open(mode, buffering, encoding, errors, newline)
 
-class JSONFile:
-	def __init__(self, file_path, indent=4, ensure_ascii=False):
-		self.file_path = file_path
-		self.indent = indent
-		self.ensure_ascii = ensure_ascii
-		
-	def load(self):
-		with open(self.file_path, encoding='utf8') as f:
-			data = json.load(f)
-		return data
-		
-	def save(self, data):
-		with open(self.file_path, 'w', encoding='utf8') as f:
-			json.dump(data, f, indent=self.indent, ensure_ascii=self.ensure_ascii)
+    def copy(self, target_path):
+        EasyFile(target_path).write_bytes(self.read_bytes())
 
-			
-class YAMLFile:
-	def __init__(self, file_path, indent=4):
-		self.file_path = file_path
-		self.indent = indent
-		
-	def load(self):
-		with open(self.file_path, encoding='utf8') as f:
-			data = yaml.load(f.read(), Loader=YLoader)
-		return data
-		
-	def save(self, data):
-		with open(self.file_path, 'w', encoding='utf8') as f:
-			yaml.dump(data, stream=f, Dumper=YDumper)
+    def read_json(self):
+        data = orjson.loads(self.read_bytes())
+        return data
 
-			
+    def write_json(self, data):
+        self.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
 
-if __name__	== '__main__':
-	pass
+    def read_yaml(self):
+        with self.open() as f:
+            data = yaml.load(f.read(), Loader=yaml.CLoader)
+        return data
+
+    def write_yaml(self, data, *args, **kwargs):
+        with self.open(mode="w") as f:
+            yaml.dump(data, stream=f, Dumper=yaml.CDumper, *args, **kwargs)
+
+
+if __name__ == "__main__":
+    pass
