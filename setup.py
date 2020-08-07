@@ -11,7 +11,8 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-	'PyYAML>=5.3'
+	'PyYAML>=5.3',
+	'orjson>=3,<4',
 ]
 
 setup_requirements = ['pytest-runner', ]
@@ -45,6 +46,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/ruslan-rv-ua/easy_file',
-    version='0.1.0',
+    version='0.2.0',
     zip_safe=False,
 )

@@ -30,12 +30,15 @@ Files for Humans
 Features
 --------
 
-* TODO
+* based on `pathlib.Path`
+* UTF-8 by default
+* fast JSON serialization/deserialization with orjson_
+* YAML serialization/deserialization 
 
 Install
 -------
 
-* TODO
+* pip Install easy-file
 
 Quickstart
 ----------
@@ -47,5 +50,6 @@ Credits
 
 This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
 
+.. _orjson: https://github.com/ijl/orjson
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
