@@ -1,12 +1,8 @@
+import pathlib
+
 import yaml
 
-import pathlib
 import orjson
-
-try:
-    from yaml import CLoader as YLoader, CDumper as YDumper
-except ImportError:
-    from yaml import Loader as YLoader, Dumper as YDumper
 
 
 class EasyFile(type(pathlib.Path())):
@@ -27,12 +23,12 @@ class EasyFile(type(pathlib.Path())):
 
     def read_yaml(self):
         with self.open() as f:
-            data = yaml.load(f.read(), Loader=YLoader)
+            data = yaml.load(f.read(), Loader=yaml.CLoader)
         return data
 
     def write_yaml(self, data, *args, **kwargs):
         with self.open(mode="w") as f:
-            yaml.dump(data, stream=f, Dumper=YDumper, *args, **kwargs)
+            yaml.dump(data, stream=f, Dumper=yaml.CDumper, *args, **kwargs)
 
 
 if __name__ == "__main__":
