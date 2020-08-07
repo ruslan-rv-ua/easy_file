@@ -1,4 +1,4 @@
-.. highlight:: shell
+b.. highlight:: shell
 
 ============
 Contributing
