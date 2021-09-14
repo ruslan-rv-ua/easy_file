@@ -27,7 +27,10 @@ Files for humans
 
 ## Features
 
-* TODO
+* based on `pathlib.Path`
+* UTF-8 by default
+* fast JSON serialization/deserialization with [orjson](https://github.com/ijl/orjson)
+* YAML serialization/deserialization 
 
 ## Credits
 
