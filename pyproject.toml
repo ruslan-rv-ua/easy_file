@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "easy_file"
-version = "0.3.0"
+version = "0.3.1-alpha.0"
 homepage = "https://github.com/ruslan-rv-ua/easy_file"
 description = "Files for humans."
 authors = ["Ruslan Iskov <ruslan.rv.ua@gmail.com>"]
