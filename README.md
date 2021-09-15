@@ -11,9 +11,9 @@
     <img src="https://github.com/ruslan-rv-ua/easy_file/actions/workflows/main.yml/badge.svg?branch=release" alt="CI Status">
 </a>
 
-<a href="https://easy-file.readthedocs.io/en/latest/?badge=latest">
+<!-- a href="https://easy-file.readthedocs.io/en/latest/?badge=latest">
     <img src="https://readthedocs.org/projects/easy-file/badge/?version=latest" alt="Documentation Status">
-</a>
+</a -->
 
 </p>
 
