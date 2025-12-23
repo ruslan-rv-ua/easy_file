@@ -44,8 +44,8 @@ content = f.read_text()  # "Привіт світ!"
 
 # JSON operations
 config = File("config.json")
-config.dump_json({"name": "Easy File", "version": "0.4.0"})
-data = config.load_json()  # {"name": "Easy File", "version": "0.4.0"}
+config.dump_json({"name": "Easy File", "version": "0.2.0"})
+data = config.load_json()  # {"name": "Easy File", "version": "0.2.0"}
 
 # YAML operations
 settings = File("settings.yaml")
@@ -68,36 +68,254 @@ print(f.suffix)    # ".txt"
 
 * based on `pathlib.Path` - all standard path operations available
 * UTF-8 by default - no more encoding issues with text files
-* fast JSON serialization/deserialization with [orjson](https://github.com/ijl/orjson)
-* YAML serialization/deserialization with [StrictYAML](https://github.com/crdoconnor/strictyaml)
+* blazing fast JSON/YAML/MessagePack serialization with [msgspec](https://github.com/jcrist/msgspec)
+* typed deserialization support with dataclasses and TypedDict
+* atomic writes for data safety
+* async methods for non-blocking I/O
+* comprehensive error handling with custom exceptions
 * automatic directory creation when writing files
+
+
+## Typed Deserialization
+
+Easy File підтримує типізовану десеріалізацію JSON та YAML даних за допомогою `TypedDict` та `dataclasses`. Це забезпечує автоматичну валідацію типів та кращу підтримку IDE.
+
+### Використання з TypedDict
+
+```python
+from typing import TypedDict
+from easy_file import File
+
+class Config(TypedDict):
+    name: str
+    version: str
+    debug: bool
+
+config = File("config.json")
+config.dump_json({"name": "Easy File", "version": "0.2.0", "debug": True})
+
+# Типізована десеріалізація
+data: Config = config.load_json(Config)
+print(data["name"])  # "Easy File"
+```
+
+### Використання з dataclasses
+
+```python
+from dataclasses import dataclass
+from easy_file import File
+
+@dataclass
+class Settings:
+    debug: bool
+    port: int
+    host: str
+
+settings = File("settings.yaml")
+settings.dump_yaml({"debug": True, "port": 8080, "host": "localhost"})
+
+# Типізована десеріалізація
+data: Settings = settings.load_yaml(Settings)
+print(data.port)  # 8080
+```
+
+
+## Async Methods
+
+Для неблокуючих операцій вводу-виводу Easy File надає асинхронні версії всіх основних методів.
+
+### Асинхронне читання та запис тексту
+
+```python
+import asyncio
+from easy_file import File
+
+async def main():
+    f = File("data.txt")
+    await f.write_text_async("Hello async!")
+    content = await f.read_text_async()
+    print(content)  # "Hello async!"
+
+asyncio.run(main())
+```
+
+### Асинхронні JSON операції
+
+```python
+import asyncio
+from easy_file import File
+
+async def main():
+    config = File("config.json")
+    await config.dump_json_async({"name": "Easy File", "version": "0.2.0"})
+    data = await config.load_json_async()
+    print(data)  # {"name": "Easy File", "version": "0.2.0"}
+
+asyncio.run(main())
+```
+
+### Асинхронні YAML операції
+
+```python
+import asyncio
+from easy_file import File
+
+async def main():
+    settings = File("settings.yaml")
+    await settings.dump_yaml_async({"debug": True, "port": 8080})
+    data = await settings.load_yaml_async()
+    print(data)  # {"debug": True, "port": 8080}
+
+asyncio.run(main())
+```
+
+
+## Error Handling
+
+Easy File надає кастомні винятки для кращої обробки помилок:
+
+- [`FileOperationError`](src/easy_file/easy_file.py:22) - базовий клас для всіх помилок операцій з файлами
+- [`JSONDecodeError`](src/easy_file/easy_file.py:28) - помилка декодування JSON
+- [`YAMLDecodeError`](src/easy_file/easy_file.py:34) - помилка декодування YAML
+
+### Приклад обробки помилок
+
+```python
+from easy_file import File, JSONDecodeError, YAMLDecodeError, FileOperationError
+
+# Обробка JSON помилок
+try:
+    config = File("config.json")
+    data = config.load_json()
+except JSONDecodeError as e:
+    print(f"Помилка JSON: {e}")
+except FileOperationError as e:
+    print(f"Помилка файлу: {e}")
+
+# Обробка YAML помилок
+try:
+    settings = File("settings.yaml")
+    data = settings.load_yaml()
+except YAMLDecodeError as e:
+    print(f"Помилка YAML: {e}")
+except FileOperationError as e:
+    print(f"Помилка файлу: {e}")
+```
+
+
+## Atomic Writes
+
+Easy File використовує атомарні записи для [`dump_json()`](src/easy_file/easy_file.py:150) та [`dump_yaml()`](src/easy_file/easy_file.py:226), що гарантує цілісність даних. Дані спочатку записуються у тимчасовий файл, а потім атомарно перейменовуються на цільовий файл.
+
+### Контекстний менеджер atomic_write
+
+Для атомарного запису будь-яких даних використовуйте контекстний менеджер [`atomic_write()`](src/easy_file/easy_file.py:257):
+
+```python
+from easy_file import File
+
+f = File("data.txt")
+
+# Атомарний запис тексту
+with f.atomic_write() as file:
+    file.write("Цей запис атомарний")
+
+# Якщо виникне помилка в контексті, оригінальний файл не буде змінено
+try:
+    with f.atomic_write() as file:
+        file.write("Частина даних")
+        raise ValueError("Щось пішло не так")
+except ValueError:
+    pass  # Оригінальний файл залишається незмінним
+```
+
+
+## Utility Methods
+
+Easy File надає корисні утилітарні методи для поширених операцій.
+
+### append_text
+
+Додає текст до кінця файлу з автоматичним створенням батьківських директорій.
+
+```python
+from easy_file import File
+
+log = File("app.log")
+log.append_text("Перший запис\n")
+log.append_text("Другий запис\n")
+print(log.read_text())  # "Перший запис\nДругий запис\n"
+```
+
+### touch_parents
+
+Створює файл та всі батьківські директорії, якщо вони не існують.
+
+```python
+from easy_file import File
+
+f = File("nested/deep/path/file.txt")
+f.touch_parents()
+print(f.exists())  # True
+```
+
+### size
+
+Властивість, що повертає розмір файлу в байтах.
+
+```python
+from easy_file import File
+
+f = File("data.txt")
+f.write_text("Hello, world!")
+print(f.size)  # 13 байтів
+```
 
 
 ## API Reference
 
 ### `File(path)`
 
-Extended `pathlib.Path` class with convenient file operations.
+Розширений клас `pathlib.Path` зі зручними операціями з файлами.
 
-#### Methods
+#### Методи
 
-| Method | Description |
-|--------|-------------|
-| [`open(mode, encoding, ...)`](src/easy_file/easy_file.py:24) | Open file with UTF-8 default encoding |
-| [`copy(target_path)`](src/easy_file/easy_file.py:48) | Copy file to target path |
-| [`load_json()`](src/easy_file/easy_file.py:58) | Load JSON data from file |
-| [`dump_json(data)`](src/easy_file/easy_file.py:66) | Dump data to file as formatted JSON |
-| [`load_yaml(schema=None)`](src/easy_file/easy_file.py:75) | Load YAML data with optional schema validation |
-| [`dump_yaml(data, schema=None)`](src/easy_file/easy_file.py:90) | Dump data to file as YAML with optional schema validation |
+| Метод | Опис |
+|-------|------|
+| [`open(mode, encoding, ...)`](src/easy_file/easy_file.py:54) | Відкрити файл з UTF-8 кодуванням за замовчуванням |
+| [`copy(target_path)`](src/easy_file/easy_file.py:87) | Копіювати файл у цільовий шлях |
+| [`load_json(type=None)`](src/easy_file/easy_file.py:110) | Завантажити JSON дані з файлу з опціональною типізацією |
+| [`dump_json(data)`](src/easy_file/easy_file.py:150) | Записати дані у файл як відформатований JSON (атомарно) |
+| [`load_yaml(type=None)`](src/easy_file/easy_file.py:186) | Завантажити YAML дані з файлу з опціональною типізацією |
+| [`dump_yaml(data)`](src/easy_file/easy_file.py:226) | Записати дані у файл як YAML (атомарно) |
+| [`atomic_write(mode, encoding)`](src/easy_file/easy_file.py:257) | Контекстний менеджер для атомарного запису |
+| [`read_text_async(encoding, errors)`](src/easy_file/easy_file.py:303) | Асинхронно прочитати текст з файлу |
+| [`write_text_async(data, encoding, errors)`](src/easy_file/easy_file.py:326) | Асинхронно записати текст у файл |
+| [`load_json_async(type=None)`](src/easy_file/easy_file.py:355) | Асинхронно завантажити JSON дані |
+| [`dump_json_async(data)`](src/easy_file/easy_file.py:382) | Асинхронно записати JSON дані |
+| [`load_yaml_async(type=None)`](src/easy_file/easy_file.py:404) | Асинхронно завантажити YAML дані |
+| [`dump_yaml_async(data)`](src/easy_file/easy_file.py:431) | Асинхронно записати YAML дані |
+| [`append_text(text, encoding, errors)`](src/easy_file/easy_file.py:447) | Додати текст до кінця файлу |
+| [`touch_parents()`](src/easy_file/easy_file.py:471) | Створити файл та батьківські директорії |
 
-All standard `pathlib.Path` methods are also available.
+#### Властивості
+
+| Властивість | Опис |
+|-------------|------|
+| [`size`](src/easy_file/easy_file.py:486) | Розмір файлу в байтах |
+
+#### Винятки
+
+| Виняток | Опис |
+|---------|------|
+| [`FileOperationError`](src/easy_file/easy_file.py:22) | Базовий клас для помилок операцій з файлами |
+| [`JSONDecodeError`](src/easy_file/easy_file.py:28) | Помилка декодування JSON |
+| [`YAMLDecodeError`](src/easy_file/easy_file.py:34) | Помилка декодування YAML |
+
+Усі стандартні методи `pathlib.Path` також доступні.
 
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-
-## Credits
-
-This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [zillionare/cookiecutter-pypackage](https://github.com/zillionare/cookiecutter-pypackage) project template.

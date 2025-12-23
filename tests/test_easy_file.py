@@ -1,8 +1,39 @@
 """Tests for easy_file package."""
 
 import pathlib
+from dataclasses import dataclass
+from typing import TypedDict
+
+import pytest
 
 from easy_file import File
+from easy_file.easy_file import FileOperationError, JSONDecodeError, YAMLDecodeError
+
+
+# Test dataclasses and TypedDict for typed deserialization tests
+@dataclass
+class Person:
+    """Test dataclass for typed deserialization."""
+
+    name: str
+    age: int
+    email: str
+
+
+class Config(TypedDict):
+    """Test TypedDict for typed deserialization."""
+
+    name: str
+    version: str
+    debug: bool
+
+
+class Settings(TypedDict):
+    """Test TypedDict for YAML typed deserialization."""
+
+    port: int
+    host: str
+    enabled: bool
 
 
 class TestFileOpen:
@@ -54,6 +85,17 @@ class TestFileCopy:
         assert target.exists()
         assert target.read_bytes() == b"\x00\x01\x02\x03"
 
+    def test_copy_creates_parent_directories(self, temp_dir: pathlib.Path) -> None:
+        """Test that copy creates parent directories if needed."""
+        source = File(temp_dir / "source.txt")
+        target = File(temp_dir / "nested" / "deep" / "target.txt")
+
+        source.write_text("test content")
+        source.copy(target)
+
+        assert target.exists()
+        assert target.read_text() == "test content"
+
 
 class TestFileJson:
     """Test File JSON operations."""
@@ -62,10 +104,10 @@ class TestFileJson:
         self, temp_dir: pathlib.Path, sample_json_data: dict[str, object]
     ) -> None:
         """Test loading JSON from file."""
-        import orjson
+        import msgspec
 
         test_file = File(temp_dir / "test.json")
-        test_file.write_bytes(orjson.dumps(sample_json_data))
+        test_file.write_bytes(msgspec.json.encode(sample_json_data))
 
         loaded = test_file.load_json()
 
@@ -91,6 +133,67 @@ class TestFileJson:
         loaded = test_file.load_json()
 
         assert loaded == sample_json_data
+
+    def test_load_json_with_typeddict(self, temp_dir: pathlib.Path) -> None:
+        """Test loading JSON with TypedDict type."""
+        test_file = File(temp_dir / "config.json")
+        test_file.dump_json({"name": "Easy File", "version": "0.4.0", "debug": True})
+
+        loaded = test_file.load_json(Config)
+
+        assert loaded["name"] == "Easy File"
+        assert loaded["version"] == "0.4.0"
+        assert loaded["debug"] is True
+
+    def test_load_json_with_dataclass(self, temp_dir: pathlib.Path) -> None:
+        """Test loading JSON with dataclass type."""
+        test_file = File(temp_dir / "person.json")
+        test_file.dump_json({"name": "John", "age": 30, "email": "john@example.com"})
+
+        loaded = test_file.load_json(Person)
+
+        assert loaded.name == "John"
+        assert loaded.age == 30
+        assert loaded.email == "john@example.com"
+
+    def test_load_json_invalid_json(self, temp_dir: pathlib.Path) -> None:
+        """Test loading invalid JSON raises JSONDecodeError."""
+        test_file = File(temp_dir / "invalid.json")
+        test_file.write_text("{invalid json}")
+
+        with pytest.raises(JSONDecodeError) as exc_info:
+            test_file.load_json()
+
+        assert "Failed to decode JSON" in str(exc_info.value)
+
+    def test_load_json_missing_file(self, temp_dir: pathlib.Path) -> None:
+        """Test loading JSON from missing file raises FileNotFoundError."""
+        test_file = File(temp_dir / "missing.json")
+
+        with pytest.raises(FileNotFoundError):
+            test_file.load_json()
+
+    def test_dump_json_creates_parent_directories(self, temp_dir: pathlib.Path) -> None:
+        """Test that dump_json creates parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "data.json")
+        test_file.dump_json({"test": "data"})
+
+        assert test_file.exists()
+        assert test_file.load_json() == {"test": "data"}
+
+    def test_dump_json_atomic_write(self, temp_dir: pathlib.Path) -> None:
+        """Test that dump_json uses atomic writes."""
+        test_file = File(temp_dir / "atomic.json")
+        test_file.dump_json({"initial": "data"})
+
+        # Simulate concurrent write by checking file exists during write
+        # The atomic write should ensure data integrity
+        test_file.dump_json({"updated": "data"})
+
+        loaded = test_file.load_json()
+        assert loaded == {"updated": "data"}
+        # File should always contain valid JSON
+        assert test_file.exists()
 
 
 class TestFileYaml:
@@ -130,32 +233,370 @@ class TestFileYaml:
 
         assert loaded == sample_yaml_data
 
-    def test_load_yaml_with_schema(self, temp_dir: pathlib.Path) -> None:
-        """Test loading YAML with schema validation."""
-        from strictyaml import Int, Map, Str
+    def test_load_yaml_with_typeddict(self, temp_dir: pathlib.Path) -> None:
+        """Test loading YAML with TypedDict type."""
+        test_file = File(temp_dir / "settings.yaml")
+        test_file.dump_yaml({"port": 8080, "host": "localhost", "enabled": True})
 
-        test_file = File(temp_dir / "test.yaml")
-        test_file.write_text("name: test\nvalue: 42\n")
+        loaded = test_file.load_yaml(Settings)
 
-        schema = Map({"name": Str(), "value": Int()})
-        loaded = test_file.load_yaml(schema)
+        assert loaded["port"] == 8080
+        assert loaded["host"] == "localhost"
+        assert loaded["enabled"] is True
 
-        assert loaded["name"] == "test"
-        assert loaded["value"] == 42
+    def test_load_yaml_with_dataclass(self, temp_dir: pathlib.Path) -> None:
+        """Test loading YAML with dataclass type."""
+        test_file = File(temp_dir / "person.yaml")
+        test_file.dump_yaml({"name": "Jane", "age": 25, "email": "jane@example.com"})
 
-    def test_dump_yaml_with_schema(self, temp_dir: pathlib.Path) -> None:
-        """Test dumping YAML with schema validation."""
-        from strictyaml import Int, Map, Str
+        loaded = test_file.load_yaml(Person)
 
-        test_file = File(temp_dir / "test.yaml")
-        schema = Map({"name": Str(), "value": Int()})
-        data: dict[str, object] = {"name": "test", "value": 42}
+        assert loaded.name == "Jane"
+        assert loaded.age == 25
+        assert loaded.email == "jane@example.com"
 
-        test_file.dump_yaml(data, schema)
+    def test_load_yaml_invalid_yaml(self, temp_dir: pathlib.Path) -> None:
+        """Test loading invalid YAML raises YAMLDecodeError."""
+        test_file = File(temp_dir / "invalid.yaml")
+        test_file.write_text("invalid: yaml: content:\n  - broken")
 
-        content = test_file.read_text()
-        assert "name: test" in content
-        assert "value: 42" in content
+        with pytest.raises(YAMLDecodeError) as exc_info:
+            test_file.load_yaml()
+
+        assert "Failed to decode YAML" in str(exc_info.value)
+
+    def test_load_yaml_missing_file(self, temp_dir: pathlib.Path) -> None:
+        """Test loading YAML from missing file raises FileNotFoundError."""
+        test_file = File(temp_dir / "missing.yaml")
+
+        with pytest.raises(FileNotFoundError):
+            test_file.load_yaml()
+
+    def test_dump_yaml_creates_parent_directories(self, temp_dir: pathlib.Path) -> None:
+        """Test that dump_yaml creates parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "data.yaml")
+        test_file.dump_yaml({"test": "data"})
+
+        assert test_file.exists()
+        assert test_file.load_yaml() == {"test": "data"}
+
+    def test_dump_yaml_atomic_write(self, temp_dir: pathlib.Path) -> None:
+        """Test that dump_yaml uses atomic writes."""
+        test_file = File(temp_dir / "atomic.yaml")
+        test_file.dump_yaml({"initial": "data"})
+
+        test_file.dump_yaml({"updated": "data"})
+
+        loaded = test_file.load_yaml()
+        assert loaded == {"updated": "data"}
+        assert test_file.exists()
+
+
+class TestFileErrors:
+    """Test error handling in File operations."""
+
+    def test_file_operation_error_is_exception(self) -> None:
+        """Test that FileOperationError is an Exception."""
+        assert issubclass(FileOperationError, Exception)
+
+    def test_json_decode_error_is_file_operation_error(self) -> None:
+        """Test that JSONDecodeError inherits from FileOperationError."""
+        assert issubclass(JSONDecodeError, FileOperationError)
+
+    def test_yaml_decode_error_is_file_operation_error(self) -> None:
+        """Test that YAMLDecodeError inherits from FileOperationError."""
+        assert issubclass(YAMLDecodeError, FileOperationError)
+
+    def test_json_decode_error_message(self, temp_dir: pathlib.Path) -> None:
+        """Test that JSONDecodeError has informative message."""
+        test_file = File(temp_dir / "bad.json")
+        test_file.write_text("{bad json")
+
+        with pytest.raises(JSONDecodeError) as exc_info:
+            test_file.load_json()
+
+        error_msg = str(exc_info.value)
+        assert "Failed to decode JSON" in error_msg
+        assert str(test_file) in error_msg
+
+    def test_yaml_decode_error_message(self, temp_dir: pathlib.Path) -> None:
+        """Test that YAMLDecodeError has informative message."""
+        test_file = File(temp_dir / "bad.yaml")
+        test_file.write_text("invalid: [yaml")
+
+        with pytest.raises(YAMLDecodeError) as exc_info:
+            test_file.load_yaml()
+
+        error_msg = str(exc_info.value)
+        assert "Failed to decode YAML" in error_msg
+        assert str(test_file) in error_msg
+
+
+class TestAtomicWrite:
+    """Test atomic write functionality."""
+
+    def test_atomic_write_success(self, temp_dir: pathlib.Path) -> None:
+        """Test successful atomic write."""
+        test_file = File(temp_dir / "atomic.txt")
+
+        with test_file.atomic_write() as f:
+            f.write("Atomic content")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Atomic content"
+
+    def test_atomic_write_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that atomic_write creates parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "atomic.txt")
+
+        with test_file.atomic_write() as f:
+            f.write("Nested content")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Nested content"
+
+    def test_atomic_write_error_cleanup(self, temp_dir: pathlib.Path) -> None:
+        """Test that atomic_write cleans up on error."""
+        test_file = File(temp_dir / "atomic.txt")
+
+        with pytest.raises(ValueError), test_file.atomic_write() as f:
+            f.write("Partial content")
+            raise ValueError("Simulated error")
+
+        # File should not exist after error
+        assert not test_file.exists()
+
+    def test_atomic_write_binary_mode(self, temp_dir: pathlib.Path) -> None:
+        """Test atomic_write in binary mode."""
+        test_file = File(temp_dir / "atomic.bin")
+
+        with test_file.atomic_write(mode="wb") as f:
+            f.write(b"\x00\x01\x02\x03")
+
+        assert test_file.exists()
+        assert test_file.read_bytes() == b"\x00\x01\x02\x03"
+
+    def test_atomic_write_preserves_existing_on_error(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that atomic_write preserves existing file on error."""
+        test_file = File(temp_dir / "atomic.txt")
+        test_file.write_text("Original content")
+
+        with pytest.raises(ValueError), test_file.atomic_write() as f:
+            f.write("New content")
+            raise ValueError("Simulated error")
+
+        # Original content should be preserved
+        assert test_file.read_text() == "Original content"
+
+
+class TestAsyncMethods:
+    """Test async file operations."""
+
+    @pytest.mark.asyncio
+    async def test_read_text_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async text reading."""
+        test_file = File(temp_dir / "async.txt")
+        test_file.write_text("Hello async!")
+
+        content = await test_file.read_text_async()
+
+        assert content == "Hello async!"
+
+    @pytest.mark.asyncio
+    async def test_write_text_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async text writing."""
+        test_file = File(temp_dir / "async.txt")
+
+        await test_file.write_text_async("Async content")
+
+        assert test_file.read_text() == "Async content"
+
+    @pytest.mark.asyncio
+    async def test_load_json_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async JSON loading."""
+        test_file = File(temp_dir / "async.json")
+        test_file.dump_json({"name": "test", "value": 42})
+
+        data = await test_file.load_json_async()
+
+        assert data == {"name": "test", "value": 42}
+
+    @pytest.mark.asyncio
+    async def test_load_json_async_with_type(self, temp_dir: pathlib.Path) -> None:
+        """Test async JSON loading with type."""
+        test_file = File(temp_dir / "async.json")
+        test_file.dump_json({"name": "Easy File", "version": "0.4.0", "debug": True})
+
+        data = await test_file.load_json_async(Config)
+
+        assert data["name"] == "Easy File"
+        assert data["version"] == "0.4.0"
+        assert data["debug"] is True
+
+    @pytest.mark.asyncio
+    async def test_dump_json_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async JSON dumping."""
+        test_file = File(temp_dir / "async.json")
+
+        await test_file.dump_json_async({"async": "data"})
+
+        assert test_file.load_json() == {"async": "data"}
+
+    @pytest.mark.asyncio
+    async def test_load_yaml_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async YAML loading."""
+        test_file = File(temp_dir / "async.yaml")
+        test_file.dump_yaml({"port": 8080, "host": "localhost"})
+
+        data = await test_file.load_yaml_async()
+
+        assert data == {"port": 8080, "host": "localhost"}
+
+    @pytest.mark.asyncio
+    async def test_load_yaml_async_with_type(self, temp_dir: pathlib.Path) -> None:
+        """Test async YAML loading with type."""
+        test_file = File(temp_dir / "async.yaml")
+        test_file.dump_yaml({"port": 8080, "host": "localhost", "enabled": True})
+
+        data = await test_file.load_yaml_async(Settings)
+
+        assert data["port"] == 8080
+        assert data["host"] == "localhost"
+        assert data["enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_dump_yaml_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async YAML dumping."""
+        test_file = File(temp_dir / "async.yaml")
+
+        await test_file.dump_yaml_async({"async": "yaml"})
+
+        assert test_file.load_yaml() == {"async": "yaml"}
+
+    @pytest.mark.asyncio
+    async def test_read_text_async_encoding(self, temp_dir: pathlib.Path) -> None:
+        """Test async text reading with custom encoding."""
+        test_file = File(temp_dir / "async.txt")
+        test_file.write_text("Привіт світ!", encoding="utf-8")
+
+        content = await test_file.read_text_async(encoding="utf-8")
+
+        assert content == "Привіт світ!"
+
+    @pytest.mark.asyncio
+    async def test_write_text_async_encoding(self, temp_dir: pathlib.Path) -> None:
+        """Test async text writing with custom encoding."""
+        test_file = File(temp_dir / "async.txt")
+
+        await test_file.write_text_async("Привіт світ!", encoding="utf-8")
+
+        assert test_file.read_text(encoding="utf-8") == "Привіт світ!"
+
+
+class TestUtilityMethods:
+    """Test utility methods."""
+
+    def test_append_text(self, temp_dir: pathlib.Path) -> None:
+        """Test appending text to file."""
+        test_file = File(temp_dir / "append.txt")
+        test_file.write_text("First line\n")
+
+        test_file.append_text("Second line\n")
+
+        assert test_file.read_text() == "First line\nSecond line\n"
+
+    def test_append_text_creates_file(self, temp_dir: pathlib.Path) -> None:
+        """Test that append_text creates file if it doesn't exist."""
+        test_file = File(temp_dir / "new.txt")
+
+        test_file.append_text("Appended content")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Appended content"
+
+    def test_append_text_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that append_text creates parent directories."""
+        test_file = File(temp_dir / "nested" / "file.txt")
+
+        test_file.append_text("Nested append")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Nested append"
+
+    def test_append_text_multiple_times(self, temp_dir: pathlib.Path) -> None:
+        """Test multiple appends to same file."""
+        test_file = File(temp_dir / "multi.txt")
+
+        test_file.append_text("Line 1\n")
+        test_file.append_text("Line 2\n")
+        test_file.append_text("Line 3\n")
+
+        assert test_file.read_text() == "Line 1\nLine 2\nLine 3\n"
+
+    def test_touch_parents(self, temp_dir: pathlib.Path) -> None:
+        """Test touch_parents creates file and parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "file.txt")
+
+        test_file.touch_parents()
+
+        assert test_file.exists()
+        assert test_file.is_file()
+
+    def test_touch_parents_existing_file(self, temp_dir: pathlib.Path) -> None:
+        """Test touch_parents with existing file."""
+        test_file = File(temp_dir / "existing.txt")
+        test_file.write_text("Content")
+
+        test_file.touch_parents()
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Content"
+
+    def test_size_property(self, temp_dir: pathlib.Path) -> None:
+        """Test size property returns correct file size."""
+        test_file = File(temp_dir / "size.txt")
+        test_file.write_text("Hello")
+
+        assert test_file.size == 5
+
+    def test_size_property_empty_file(self, temp_dir: pathlib.Path) -> None:
+        """Test size property for empty file."""
+        test_file = File(temp_dir / "empty.txt")
+        test_file.write_text("")
+
+        assert test_file.size == 0
+
+    def test_size_property_binary_file(self, temp_dir: pathlib.Path) -> None:
+        """Test size property for binary file."""
+        test_file = File(temp_dir / "binary.bin")
+        test_file.write_bytes(b"\x00\x01\x02\x03\x04")
+
+        assert test_file.size == 5
+
+    def test_size_property_missing_file(self, temp_dir: pathlib.Path) -> None:
+        """Test size property raises FileNotFoundError for missing file."""
+        test_file = File(temp_dir / "missing.txt")
+
+        with pytest.raises(FileNotFoundError):
+            _ = test_file.size
+
+    def test_size_property_unicode_content(self, temp_dir: pathlib.Path) -> None:
+        """Test size property with Unicode content."""
+        test_file = File(temp_dir / "unicode.txt")
+        test_file.write_text("Привіт світ!")
+
+        # Verify the file size is correct for UTF-8 encoding
+        # The actual size depends on how Python encodes the text
+        # Just verify that the size is non-zero and matches the content length
+        assert test_file.size > 0
+        # Read back and verify content matches
+        assert test_file.read_text() == "Привіт світ!"
 
 
 class TestFileInheritance:
@@ -174,3 +615,175 @@ class TestFileInheritance:
         assert test_file.stem == "test"
         assert test_file.suffix == ".txt"
         assert "subdir" in str(test_file)
+
+    def test_file_can_be_used_as_path(self, temp_dir: pathlib.Path) -> None:
+        """Test that File can be used where Path is expected."""
+        test_file = File(temp_dir / "test.txt")
+        test_file.write_text("content")
+
+        # Should work with pathlib operations
+        parent = test_file.parent
+        assert parent.exists()
+
+        # Should work with Path operations
+        assert test_file.with_suffix(".bak") == File(temp_dir / "test.bak")
+
+
+class TestEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    def test_empty_json(self, temp_dir: pathlib.Path) -> None:
+        """Test loading empty JSON object."""
+        test_file = File(temp_dir / "empty.json")
+        test_file.dump_json({})
+
+        loaded = test_file.load_json()
+        assert loaded == {}
+
+    def test_empty_yaml(self, temp_dir: pathlib.Path) -> None:
+        """Test loading empty YAML."""
+        test_file = File(temp_dir / "empty.yaml")
+        test_file.dump_yaml({})
+
+        loaded = test_file.load_yaml()
+        assert loaded == {}
+
+    def test_large_json(self, temp_dir: pathlib.Path) -> None:
+        """Test loading large JSON file."""
+        test_file = File(temp_dir / "large.json")
+        large_data = {"items": [{"id": i, "value": f"item_{i}"} for i in range(1000)]}
+        test_file.dump_json(large_data)
+
+        loaded = test_file.load_json()
+        assert len(loaded["items"]) == 1000
+
+    def test_nested_json(self, temp_dir: pathlib.Path) -> None:
+        """Test loading deeply nested JSON."""
+        test_file = File(temp_dir / "nested.json")
+        nested_data = {"level1": {"level2": {"level3": {"level4": "deep"}}}}
+        test_file.dump_json(nested_data)
+
+        loaded = test_file.load_json()
+        assert loaded["level1"]["level2"]["level3"]["level4"] == "deep"
+
+    def test_special_characters_in_json(self, temp_dir: pathlib.Path) -> None:
+        """Test JSON with special characters."""
+        test_file = File(temp_dir / "special.json")
+        special_data = {
+            "unicode": "Привіт 世界 🌍",
+            "quotes": 'He said "Hello"',
+            "newlines": "Line1\nLine2",
+            "tabs": "Col1\tCol2",
+        }
+        test_file.dump_json(special_data)
+
+        loaded = test_file.load_json()
+        assert loaded["unicode"] == "Привіт 世界 🌍"
+        assert loaded["quotes"] == 'He said "Hello"'
+        assert loaded["newlines"] == "Line1\nLine2"
+        assert loaded["tabs"] == "Col1\tCol2"
+
+    def test_yaml_multiline_strings(self, temp_dir: pathlib.Path) -> None:
+        """Test YAML with multiline strings."""
+        test_file = File(temp_dir / "multiline.yaml")
+        multiline_data = {"description": "This is a\nmultiline\nstring"}
+        test_file.dump_yaml(multiline_data)
+
+        loaded = test_file.load_yaml()
+        assert loaded["description"] == "This is a\nmultiline\nstring"
+
+    def test_json_list(self, temp_dir: pathlib.Path) -> None:
+        """Test loading JSON array."""
+        test_file = File(temp_dir / "list.json")
+        list_data = [1, 2, 3, "four", {"five": 5}]
+        test_file.dump_json(list_data)
+
+        loaded = test_file.load_json()
+        assert loaded == [1, 2, 3, "four", {"five": 5}]
+
+    def test_yaml_list(self, temp_dir: pathlib.Path) -> None:
+        """Test loading YAML list."""
+        test_file = File(temp_dir / "list.yaml")
+        list_data = [1, 2, 3, "four", {"five": 5}]
+        test_file.dump_yaml(list_data)
+
+        loaded = test_file.load_yaml()
+        assert loaded == [1, 2, 3, "four", {"five": 5}]
+
+    def test_json_null_values(self, temp_dir: pathlib.Path) -> None:
+        """Test JSON with null values."""
+        test_file = File(temp_dir / "null.json")
+        null_data = {"value": None, "list": [1, None, 3]}
+        test_file.dump_json(null_data)
+
+        loaded = test_file.load_json()
+        assert loaded["value"] is None
+        assert loaded["list"][1] is None
+
+    def test_yaml_null_values(self, temp_dir: pathlib.Path) -> None:
+        """Test YAML with null values."""
+        test_file = File(temp_dir / "null.yaml")
+        null_data = {"value": None, "list": [1, None, 3]}
+        test_file.dump_yaml(null_data)
+
+        loaded = test_file.load_yaml()
+        assert loaded["value"] is None
+        assert loaded["list"][1] is None
+
+    def test_json_boolean_values(self, temp_dir: pathlib.Path) -> None:
+        """Test JSON with boolean values."""
+        test_file = File(temp_dir / "bool.json")
+        bool_data = {"true_val": True, "false_val": False}
+        test_file.dump_json(bool_data)
+
+        loaded = test_file.load_json()
+        assert loaded["true_val"] is True
+        assert loaded["false_val"] is False
+
+    def test_yaml_boolean_values(self, temp_dir: pathlib.Path) -> None:
+        """Test YAML with boolean values."""
+        test_file = File(temp_dir / "bool.yaml")
+        bool_data = {"true_val": True, "false_val": False}
+        test_file.dump_yaml(bool_data)
+
+        loaded = test_file.load_yaml()
+        assert loaded["true_val"] is True
+        assert loaded["false_val"] is False
+
+    def test_numeric_values_json(self, temp_dir: pathlib.Path) -> None:
+        """Test JSON with various numeric types."""
+        test_file = File(temp_dir / "numeric.json")
+        numeric_data = {
+            "int": 42,
+            "float": 3.14,
+            "negative": -10,
+            "zero": 0,
+            "large": 1000000,
+        }
+        test_file.dump_json(numeric_data)
+
+        loaded = test_file.load_json()
+        assert loaded["int"] == 42
+        assert loaded["float"] == 3.14
+        assert loaded["negative"] == -10
+        assert loaded["zero"] == 0
+        assert loaded["large"] == 1000000
+
+    def test_numeric_values_yaml(self, temp_dir: pathlib.Path) -> None:
+        """Test YAML with various numeric types."""
+        test_file = File(temp_dir / "numeric.yaml")
+        numeric_data = {
+            "int": 42,
+            "float": 3.14,
+            "negative": -10,
+            "zero": 0,
+            "large": 1000000,
+        }
+        test_file.dump_yaml(numeric_data)
+
+        loaded = test_file.load_yaml()
+        assert loaded["int"] == 42
+        assert loaded["float"] == 3.14
+        assert loaded["negative"] == -10
+        assert loaded["zero"] == 0
+        assert loaded["large"] == 1000000

@@ -2,16 +2,39 @@
 
 from __future__ import annotations
 
+import asyncio
 import pathlib
-from typing import Any, BinaryIO, TextIO
+import tempfile
+from contextlib import contextmanager
+from typing import Any, BinaryIO, TextIO, TypeVar, overload
 
-import orjson
-from strictyaml import (
-    as_document,  # type: ignore[import-untyped]
-)
-from strictyaml import (
-    load as yaml_load,  # type: ignore[import-untyped]
-)
+import msgspec
+
+# Global encoder and decoder for msgspec JSON
+_json_encoder = msgspec.json.Encoder()
+_json_decoder = msgspec.json.Decoder()
+# msgspec.yaml uses encode/decode functions, not Encoder/Decoder classes
+
+# Type variable for generic return types
+_T = TypeVar("_T")
+
+
+class FileOperationError(Exception):
+    """Base exception for file operation errors."""
+
+    pass
+
+
+class JSONDecodeError(FileOperationError):
+    """Exception raised when JSON decoding fails."""
+
+    pass
+
+
+class YAMLDecodeError(FileOperationError):
+    """Exception raised when YAML decoding fails."""
+
+    pass
 
 
 class File(pathlib.Path):
@@ -78,11 +101,25 @@ class File(pathlib.Path):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(self.read_bytes())
 
-    def load_json(self) -> Any:
+    @overload
+    def load_json(self) -> Any: ...
+
+    @overload
+    def load_json(self, type: type[_T]) -> _T: ...
+
+    def load_json(self, type: type[_T] | None = None) -> Any:
         """Load JSON data from this file.
+
+        Args:
+            type: Optional type for typed deserialization.
+                  If provided, returns data of the specified type.
 
         Returns:
             Parsed JSON data (dict, list, or other JSON-compatible type)
+            If type is provided, returns data of the specified type.
+
+        Raises:
+            JSONDecodeError: If JSON decoding fails
 
         Example:
             >>> config = File("config.json")
@@ -90,11 +127,30 @@ class File(pathlib.Path):
             >>> data = config.load_json()
             >>> print(data)
             {'name': 'Easy File', 'version': '0.4.0'}
+
+        Example with type:
+            >>> from typing import TypedDict
+            >>> class Config(TypedDict):
+            ...     name: str
+            ...     version: str
+            >>> config = File("config.json")
+            >>> config.dump_json({"name": "Easy File", "version": "0.4.0"})
+            >>> data = config.load_json(Config)
+            >>> print(data["name"])
+            Easy File
         """
-        return orjson.loads(self.read_bytes())
+        try:
+            content = self.read_bytes()
+            if type is not None:
+                return msgspec.json.decode(content, type=type)  # type: ignore[return-value]
+            return _json_decoder.decode(content)
+        except msgspec.DecodeError as e:
+            raise JSONDecodeError(f"Failed to decode JSON from {self}: {e}") from e
 
     def dump_json(self, data: Any) -> None:
         """Dump data to this file as formatted JSON.
+
+        Uses atomic writes to ensure data integrity.
 
         Args:
             data: Data to serialize as JSON
@@ -106,17 +162,40 @@ class File(pathlib.Path):
             '{\\n  "name": "Easy File",\\n  "version": "0.4.0"\\n}'
         """
         self.parent.mkdir(parents=True, exist_ok=True)
-        self.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
+        json_bytes = _json_encoder.encode(data)
 
-    def load_yaml(self, schema: Any | None = None) -> Any:
-        """Load YAML data from this file using StrictYAML.
+        # Atomic write using temporary file
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=self.parent,
+            prefix=f".{self.name}.",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = pathlib.Path(tmp_file.name)
+            tmp_file.write(json_bytes)
+
+        # Atomic rename
+        tmp_path.replace(self)
+
+    @overload
+    def load_yaml(self) -> Any: ...
+
+    @overload
+    def load_yaml(self, type: type[_T]) -> _T: ...
+
+    def load_yaml(self, type: type[_T] | None = None) -> Any:
+        """Load YAML data from this file.
 
         Args:
-            schema: Optional StrictYAML schema for validation.
-                    If None, loads as generic YAML.
+            type: Optional type for typed deserialization.
+                  If provided, returns data of the specified type.
 
         Returns:
-            Parsed YAML data (StrictYAML object if schema provided, dict otherwise)
+            Parsed YAML data (dict, list, or other YAML-compatible type)
+            If type is provided, returns data of the specified type.
+
+        Raises:
+            YAMLDecodeError: If YAML decoding fails
 
         Example:
             >>> settings = File("settings.yaml")
@@ -125,41 +204,298 @@ class File(pathlib.Path):
             >>> print(data)
             {'debug': True, 'port': 8080}
 
-        Example with schema:
-            >>> from strictyaml import Int, Map, Str
-            >>> schema = Map({"name": Str(), "value": Int()})
-            >>> settings.dump_yaml({"name": "test", "value": 42})
-            >>> data = settings.load_yaml(schema)
-            >>> print(data["name"])
-            test
+        Example with type:
+            >>> from typing import TypedDict
+            >>> class Settings(TypedDict):
+            ...     debug: bool
+            ...     port: int
+            >>> settings = File("settings.yaml")
+            >>> settings.dump_yaml({"debug": True, "port": 8080})
+            >>> data = settings.load_yaml(Settings)
+            >>> print(data["debug"])
+            True
         """
-        with self.open() as f:
-            content = f.read()
+        try:
+            content = self.read_bytes()
+            if type is not None:
+                return msgspec.yaml.decode(content, type=type)  # type: ignore[return-value]
+            return msgspec.yaml.decode(content)
+        except msgspec.DecodeError as e:
+            raise YAMLDecodeError(f"Failed to decode YAML from {self}: {e}") from e
 
-        return yaml_load(content, schema) if schema is not None else yaml_load(content)
+    def dump_yaml(self, data: Any) -> None:
+        """Dump data to this file as YAML.
 
-    def dump_yaml(self, data: Any, schema: Any | None = None) -> None:
-        """Dump data to this file as YAML using StrictYAML.
+        Uses atomic writes to ensure data integrity.
 
         Args:
             data: Data to serialize as YAML
-            schema: Optional StrictYAML schema for validation
 
         Example:
             >>> settings = File("settings.yaml")
             >>> settings.dump_yaml({"debug": True, "port": 8080})
             >>> settings.read_text()
             'debug: true\\nport: 8080\\n'
-
-        Example with schema:
-            >>> from strictyaml import Int, Map, Str
-            >>> schema = Map({"name": Str(), "value": Int()})
-            >>> settings.dump_yaml({"name": "test", "value": 42}, schema)
-            >>> settings.read_text()
-            'name: test\\nvalue: 42\\n'
         """
         self.parent.mkdir(parents=True, exist_ok=True)
-        doc = as_document(data, schema)
+        yaml_bytes = msgspec.yaml.encode(data)
 
-        with self.open(mode="w") as f:
-            f.write(doc.as_yaml())
+        # Atomic write using temporary file
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=self.parent,
+            prefix=f".{self.name}.",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = pathlib.Path(tmp_file.name)
+            tmp_file.write(yaml_bytes)
+
+        # Atomic rename
+        tmp_path.replace(self)
+
+    @contextmanager
+    def atomic_write(self, mode: str = "w", encoding: str | None = None) -> Any:
+        """Context manager for atomic file writes.
+
+        Writes to a temporary file and atomically renames it to the target
+        path when the context exits successfully.
+
+        Args:
+            mode: File opening mode (default: 'w')
+            encoding: Text encoding (defaults to UTF-8 for text modes)
+
+        Yields:
+            File object for writing
+
+        Example:
+            >>> f = File("data.txt")
+            >>> with f.atomic_write() as file:
+            ...     file.write("Atomic content")
+            >>> f.read_text()
+            'Atomic content'
+        """
+        if encoding is None and "b" not in mode:
+            encoding = "utf-8"
+
+        self.parent.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.NamedTemporaryFile(
+            mode=mode,
+            dir=self.parent,
+            prefix=f".{self.name}.",
+            encoding=encoding,
+            delete=False,
+        ) as tmp_file:
+            tmp_path = pathlib.Path(tmp_file.name)
+            try:
+                yield tmp_file
+                tmp_file.flush()
+                # Close the file before replace/unlink to avoid Windows file lock issues
+                tmp_file.close()
+            except Exception:
+                # Close the file before unlink to avoid Windows file lock issues
+                tmp_file.close()
+                tmp_path.unlink(missing_ok=True)
+                raise
+            else:
+                tmp_path.replace(self)
+
+    async def read_text_async(
+        self, encoding: str = "utf-8", errors: str | None = None
+    ) -> str:
+        """Asynchronously read text from this file.
+
+        Args:
+            encoding: Text encoding (default: 'utf-8')
+            errors: Error handling strategy
+
+        Returns:
+            File content as string
+
+        Example:
+            >>> import asyncio
+            >>> f = File("data.txt")
+            >>> f.write_text("Hello")
+            >>> content = asyncio.run(f.read_text_async())
+            >>> print(content)
+            Hello
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.read_text, encoding, errors)
+
+    async def write_text_async(
+        self,
+        data: str,
+        encoding: str = "utf-8",
+        errors: str | None = None,
+    ) -> None:
+        """Asynchronously write text to this file.
+
+        Args:
+            data: Text to write
+            encoding: Text encoding (default: 'utf-8')
+            errors: Error handling strategy
+
+        Example:
+            >>> import asyncio
+            >>> f = File("data.txt")
+            >>> asyncio.run(f.write_text_async("Hello async"))
+            >>> f.read_text()
+            'Hello async'
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.write_text, data, encoding, errors)
+
+    @overload
+    async def load_json_async(self) -> Any: ...
+
+    @overload
+    async def load_json_async(self, type: type[_T]) -> _T: ...
+
+    async def load_json_async(self, type: type[_T] | None = None) -> Any:
+        """Asynchronously load JSON data from this file.
+
+        Args:
+            type: Optional type for typed deserialization.
+
+        Returns:
+            Parsed JSON data
+
+        Raises:
+            JSONDecodeError: If JSON decoding fails
+
+        Example:
+            >>> import asyncio
+            >>> config = File("config.json")
+            >>> config.dump_json({"name": "Easy File"})
+            >>> data = asyncio.run(config.load_json_async())
+            >>> print(data)
+            {'name': 'Easy File'}
+        """
+        loop = asyncio.get_event_loop()
+
+        def _load() -> Any:
+            return self.load_json(type)  # type: ignore[arg-type]
+
+        return await loop.run_in_executor(None, _load)
+
+    async def dump_json_async(self, data: Any) -> None:
+        """Asynchronously dump data to this file as formatted JSON.
+
+        Args:
+            data: Data to serialize as JSON
+
+        Example:
+            >>> import asyncio
+            >>> config = File("config.json")
+            >>> asyncio.run(config.dump_json_async({"name": "Easy File"}))
+            >>> config.read_text()
+            '{\\n  "name": "Easy File"\\n}'
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.dump_json, data)
+
+    @overload
+    async def load_yaml_async(self) -> Any: ...
+
+    @overload
+    async def load_yaml_async(self, type: type[_T]) -> _T: ...
+
+    async def load_yaml_async(self, type: type[_T] | None = None) -> Any:
+        """Asynchronously load YAML data from this file.
+
+        Args:
+            type: Optional type for typed deserialization.
+
+        Returns:
+            Parsed YAML data
+
+        Raises:
+            YAMLDecodeError: If YAML decoding fails
+
+        Example:
+            >>> import asyncio
+            >>> settings = File("settings.yaml")
+            >>> settings.dump_yaml({"debug": True})
+            >>> data = asyncio.run(settings.load_yaml_async())
+            >>> print(data)
+            {'debug': True}
+        """
+        loop = asyncio.get_event_loop()
+
+        def _load() -> Any:
+            return self.load_yaml(type)  # type: ignore[arg-type]
+
+        return await loop.run_in_executor(None, _load)
+
+    async def dump_yaml_async(self, data: Any) -> None:
+        """Asynchronously dump data to this file as YAML.
+
+        Args:
+            data: Data to serialize as YAML
+
+        Example:
+            >>> import asyncio
+            >>> settings = File("settings.yaml")
+            >>> asyncio.run(settings.dump_yaml_async({"debug": True}))
+            >>> settings.read_text()
+            'debug: true\\n'
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.dump_yaml, data)
+
+    def append_text(
+        self,
+        text: str,
+        encoding: str = "utf-8",
+        errors: str | None = None,
+    ) -> None:
+        """Append text to this file.
+
+        Args:
+            text: Text to append
+            encoding: Text encoding (default: 'utf-8')
+            errors: Error handling strategy
+
+        Example:
+            >>> f = File("log.txt")
+            >>> f.write_text("First line\\n")
+            >>> f.append_text("Second line\\n")
+            >>> f.read_text()
+            'First line\\nSecond line\\n'
+        """
+        self.parent.mkdir(parents=True, exist_ok=True)
+        with self.open(mode="a", encoding=encoding, errors=errors) as f:
+            f.write(text)  # type: ignore[arg-type]
+
+    def touch_parents(self) -> None:
+        """Create this file and all parent directories if they don't exist.
+
+        Similar to `touch` command but also creates parent directories.
+
+        Example:
+            >>> f = File("nested/deep/file.txt")
+            >>> f.touch_parents()
+            >>> f.exists()
+            True
+        """
+        self.parent.mkdir(parents=True, exist_ok=True)
+        self.touch()
+
+    @property
+    def size(self) -> int:
+        """Get the size of this file in bytes.
+
+        Returns:
+            File size in bytes
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+
+        Example:
+            >>> f = File("data.txt")
+            >>> f.write_text("Hello")
+            >>> f.size
+            5
+        """
+        return self.stat().st_size

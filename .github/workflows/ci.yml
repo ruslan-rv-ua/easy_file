@@ -34,15 +34,33 @@ jobs:
           uv venv
           uv pip install -e ".[dev]"
       
+      - name: Verify msgspec installation
+        run: uv run python -c "import msgspec; print('msgspec version:', msgspec.__version__)"
+      
+      - name: Verify pytest-asyncio installation
+        run: uv run python -c "import pytest_asyncio; print('pytest-asyncio installed')"
+      
       - name: Run ruff check
         run: uv run ruff check .
       
       - name: Run ruff format check
         run: uv run ruff format --check .
       
-      - name: Run mypy
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+      
+      - name: Run mypy on src
         run: uv run mypy src/easy_file
       
-      - name: Run pytest
-        run: uv run pytest --cov=easy_file --cov-report=xml --cov-report=term-missing
+      - name: Run mypy on tests
+        run: uv run mypy tests
+      
+      - name: Run pytest with coverage
+        run: uv run pytest --cov=easy_file --cov-report=xml --cov-report=term-missing --cov-report=html --asyncio-mode=auto
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
       
