@@ -6,11 +6,12 @@ import pathlib
 from typing import Any, BinaryIO, TextIO
 
 import orjson
-import yaml
 from strictyaml import (
     as_document,  # type: ignore[import-untyped]
 )
-from strictyaml import load as yaml_load  # type: ignore[import-untyped]
+from strictyaml import (
+    load as yaml_load,  # type: ignore[import-untyped]
+)
 
 
 class File(pathlib.Path):
@@ -60,8 +61,7 @@ class File(pathlib.Path):
         Returns:
             Parsed JSON data (dict, list, or other JSON-compatible type)
         """
-        data = orjson.loads(self.read_bytes())
-        return data
+        return orjson.loads(self.read_bytes())
 
     def dump_json(self, data: Any) -> None:
         """Dump data to this file as formatted JSON.
@@ -85,9 +85,7 @@ class File(pathlib.Path):
         with self.open() as f:
             content = f.read()
 
-        if schema is not None:
-            return yaml_load(content, schema)
-        return yaml.safe_load(content)
+        return yaml_load(content, schema) if schema is not None else yaml_load(content)
 
     def dump_yaml(self, data: Any, schema: Any | None = None) -> None:
         """Dump data to this file as YAML using StrictYAML.
@@ -97,11 +95,7 @@ class File(pathlib.Path):
             schema: Optional StrictYAML schema for validation
         """
         self.parent.mkdir(parents=True, exist_ok=True)
-        doc = as_document(data, schema) if schema is not None else as_document(data)
+        doc = as_document(data, schema)
 
         with self.open(mode="w") as f:
             f.write(doc.as_yaml())
-
-
-if __name__ == "__main__":
-    pass
