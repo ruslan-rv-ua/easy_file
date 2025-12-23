@@ -50,7 +50,9 @@ class File(pathlib.Path):
         Args:
             target_path: Destination path for the copy
         """
-        File(target_path).write_bytes(self.read_bytes())
+        target = File(target_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(self.read_bytes())
 
     def load_json(self) -> Any:
         """Load JSON data from this file.
@@ -67,6 +69,7 @@ class File(pathlib.Path):
         Args:
             data: Data to serialize as JSON
         """
+        self.parent.mkdir(parents=True, exist_ok=True)
         self.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
 
     def load_yaml(self, schema: Any | None = None) -> Any:
@@ -93,6 +96,7 @@ class File(pathlib.Path):
             data: Data to serialize as YAML
             schema: Optional StrictYAML schema for validation
         """
+        self.parent.mkdir(parents=True, exist_ok=True)
         doc = as_document(data, schema) if schema is not None else as_document(data)
 
         with self.open(mode="w") as f:
