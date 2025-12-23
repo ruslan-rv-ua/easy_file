@@ -55,11 +55,11 @@ Ready to contribute? Here's how to set up `easy_file` for local development.
     $ git clone git@github.com:your_name_here/easy_file.git
 ```
 
-3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
-4. Install dependencies and start your virtualenv:
+3. Ensure [uv](https://docs.astral.sh/uv/) is installed.
+4. Install dependencies and create a virtual environment:
 
 ```
-    $ poetry install -E test -E doc -E dev
+    $ uv sync --extra test --extra dev
 ```
 
 5. Create a branch for local development:
@@ -70,11 +70,10 @@ Ready to contribute? Here's how to set up `easy_file` for local development.
 
    Now you can make your changes locally.
 
-6. When you're done making changes, check that your changes pass the
-   tests, including testing other Python versions, with tox:
+6. When you're done making changes, check that your changes pass the tests:
 
 ```
-    $ tox
+    $ uv run pytest
 ```
 
 7. Commit your changes and push your branch to GitHub:
@@ -95,25 +94,34 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.
-3. The pull request should work for Python 3.6, 3.7, 3.8, 3.9 and for PyPy. Check
+3. The pull request should work for Python 3.9+. Check
    https://github.com/ruslan-rv-ua/easy_file/actions
    and make sure that the tests pass for all supported Python versions.
 
-## Tips```
-    $ pytest tests.test_easy_file
-```To run a subset of tests.
+## Tips
 
+To run a subset of tests:
+
+```
+    $ uv run pytest tests/test_easy_file.py
+```
+
+To run tests with coverage:
+
+```
+    $ uv run pytest --cov=easy_file
+```
 
 ## Deploying
 
 A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in HISTORY.md).
+Make sure all your changes are committed (including an entry in CHANGELOG.md).
 Then run:
 
 ```
-$ poetry patch # possible: major / minor / patch
+$ uv version patch  # possible: major / minor / patch
 $ git push
 $ git push --tags
 ```
 
-Travis will then deploy to PyPI if tests pass.
+GitHub Actions will then deploy to PyPI if tests pass.

@@ -19,6 +19,13 @@ class File(pathlib.Path):
 
     Provides methods for JSON and YAML operations, copying, and
     UTF-8 default encoding for text files.
+
+    Example:
+        >>> from easy_file import File
+        >>> f = File("data.txt")
+        >>> f.write_text("Hello, world!")
+        >>> f.read_text()
+        'Hello, world!'
     """
 
     def open(  # type: ignore[override]
@@ -40,6 +47,15 @@ class File(pathlib.Path):
 
         Returns:
             File object (TextIO or BinaryIO)
+
+        Example:
+            >>> f = File("example.txt")
+            >>> with f.open("w") as file:
+            ...     file.write("Привіт світ!")
+            >>> with f.open() as file:
+            ...     content = file.read()
+            >>> print(content)
+            Привіт світ!
         """
         if encoding is None and "b" not in mode:
             encoding = "utf-8"
@@ -50,6 +66,13 @@ class File(pathlib.Path):
 
         Args:
             target_path: Destination path for the copy
+
+        Example:
+            >>> source = File("source.txt")
+            >>> source.write_text("Original content")
+            >>> source.copy("backup.txt")
+            >>> File("backup.txt").read_text()
+            'Original content'
         """
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -60,6 +83,13 @@ class File(pathlib.Path):
 
         Returns:
             Parsed JSON data (dict, list, or other JSON-compatible type)
+
+        Example:
+            >>> config = File("config.json")
+            >>> config.dump_json({"name": "Easy File", "version": "0.4.0"})
+            >>> data = config.load_json()
+            >>> print(data)
+            {'name': 'Easy File', 'version': '0.4.0'}
         """
         return orjson.loads(self.read_bytes())
 
@@ -68,6 +98,12 @@ class File(pathlib.Path):
 
         Args:
             data: Data to serialize as JSON
+
+        Example:
+            >>> config = File("config.json")
+            >>> config.dump_json({"name": "Easy File", "version": "0.4.0"})
+            >>> config.read_text()
+            '{\\n  "name": "Easy File",\\n  "version": "0.4.0"\\n}'
         """
         self.parent.mkdir(parents=True, exist_ok=True)
         self.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
@@ -81,6 +117,21 @@ class File(pathlib.Path):
 
         Returns:
             Parsed YAML data (StrictYAML object if schema provided, dict otherwise)
+
+        Example:
+            >>> settings = File("settings.yaml")
+            >>> settings.dump_yaml({"debug": True, "port": 8080})
+            >>> data = settings.load_yaml()
+            >>> print(data)
+            {'debug': True, 'port': 8080}
+
+        Example with schema:
+            >>> from strictyaml import Int, Map, Str
+            >>> schema = Map({"name": Str(), "value": Int()})
+            >>> settings.dump_yaml({"name": "test", "value": 42})
+            >>> data = settings.load_yaml(schema)
+            >>> print(data["name"])
+            test
         """
         with self.open() as f:
             content = f.read()
@@ -93,6 +144,19 @@ class File(pathlib.Path):
         Args:
             data: Data to serialize as YAML
             schema: Optional StrictYAML schema for validation
+
+        Example:
+            >>> settings = File("settings.yaml")
+            >>> settings.dump_yaml({"debug": True, "port": 8080})
+            >>> settings.read_text()
+            'debug: true\\nport: 8080\\n'
+
+        Example with schema:
+            >>> from strictyaml import Int, Map, Str
+            >>> schema = Map({"name": Str(), "value": Int()})
+            >>> settings.dump_yaml({"name": "test", "value": 42}, schema)
+            >>> settings.read_text()
+            'name: test\\nvalue: 42\\n'
         """
         self.parent.mkdir(parents=True, exist_ok=True)
         doc = as_document(data, schema)
