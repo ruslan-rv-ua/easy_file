@@ -1,92 +1,88 @@
-[tool]
-[tool.poetry]
+[project]
 name = "easy_file"
-version = "0.3.2"
-homepage = "https://github.com/ruslan-rv-ua/easy_file"
+version = "0.4.0"
 description = "Files for humans."
-authors = ["Ruslan Iskov <ruslan.rv.ua@gmail.com>"]
 readme = "README.md"
-license =  "MIT"
-classifiers=[
-    'Development Status :: 2 - Pre-Alpha',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: MIT License',
-    'Natural Language :: English',
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.9',
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Ruslan Iskov", email = "ruslan.rv.ua@gmail.com"}
 ]
-packages = [
-    { include = "easy_file" },
-    { include = "tests", format = "sdist" },
+keywords = ["file", "pathlib", "json", "yaml"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.7,<4.0"
+dependencies = [
+    "orjson>=3.9.0",
+    "pyyaml>=6.0.0",
+    "strictyaml>=1.7.0",
+]
 
-black  = { version = "20.8b1", optional = true}
-isort  = { version = "5.6.4", optional = true}
-flake8  = { version = "3.8.4", optional = true}
-flake8-docstrings = { version = "^1.6.0", optional = true }
-pytest  = { version = "6.1.2", optional = true}
-pytest-cov  = { version = "2.10.1", optional = true}
-tox  = { version = "^3.20.1", optional = true}
-virtualenv  = { version = "^20.2.2", optional = true}
-pip  = { version = "^20.3.1", optional = true}
-mkdocs  = { version = "^1.1.2", optional = true}
-mkdocs-include-markdown-plugin  = { version = "^1.0.0", optional = true}
-mkdocs-material  = { version = "^6.1.7", optional = true}
-mkdocstrings  = { version = "^0.13.6", optional = true}
-twine  = { version = "^3.3.0", optional = true}
-mkdocs-autorefs = {version = "0.1.1", optional = true}
-pre-commit = {version = "^2.12.0", optional = true}
-toml = {version = "^0.10.2", optional = true}
-orjson = "^3.6.3"
-PyYAML = "^5.4.1"
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.5.0",
+]
 
-[tool.poetry.extras]
-test = [
-    "pytest",
-    "black",
-    "isort",
-    "flake8",
-    "flake8-docstrings",
-    "pytest-cov"
-    ]
+[project.urls]
+Homepage = "https://github.com/ruslan-rv-ua/easy_file"
+Repository = "https://github.com/ruslan-rv-ua/easy_file"
+Issues = "https://github.com/ruslan-rv-ua/easy_file/issues"
 
-dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml"]
-
-doc = [
-    "mkdocs",
-    "mkdocs-include-markdown-plugin",
-    "mkdocs-material",
-    "mkdocstrings",
-    "mkdocs-material-extension",
-    "mkdocs-autorefs"
-    ]
-
-
-
-
-[tool.poetry.dev-dependencies]
-livereload = "^2.6.3"
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.black]
+[tool.hatch.build.targets.wheel]
+packages = ["src/easy_file"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=easy_file",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+
+[tool.ruff]
+target-version = "py312"
 line-length = 88
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+skip-magic-trailing-comma = false
