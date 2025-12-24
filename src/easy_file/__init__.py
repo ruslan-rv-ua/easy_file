@@ -1,6 +1,15 @@
 """Easy File - Files for humans."""
 
-from easy_file.easy_file import File
+from easy_file.easy_file import (
+    File,
+    FileOperationError,
+    JSONDecodeError,
+    YAMLDecodeError,
+)
 
-__all__ = ["File"]
-__version__ = "0.4.0"
+__all__ = [
+    "File",
+    "FileOperationError",
+    "JSONDecodeError",
+    "YAMLDecodeError",
+]
