@@ -320,8 +320,7 @@ class File(pathlib.Path):
             >>> print(content)
             Hello
         """
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.read_text, encoding, errors)
+        return await asyncio.to_thread(self.read_text, encoding, errors)
 
     async def write_text_async(
         self,
@@ -343,8 +342,7 @@ class File(pathlib.Path):
             >>> f.read_text()
             'Hello async'
         """
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.write_text, data, encoding, errors)
+        await asyncio.to_thread(self.write_text, data, encoding, errors)
 
     @overload
     async def load_json_async(self) -> Any: ...
@@ -372,12 +370,11 @@ class File(pathlib.Path):
             >>> print(data)
             {'name': 'Easy File'}
         """
-        loop = asyncio.get_event_loop()
 
         def _load() -> Any:
             return self.load_json(type)  # type: ignore[arg-type]
 
-        return await loop.run_in_executor(None, _load)
+        return await asyncio.to_thread(_load)
 
     async def dump_json_async(self, data: Any) -> None:
         """Asynchronously dump data to this file as formatted JSON.
@@ -392,8 +389,7 @@ class File(pathlib.Path):
             >>> config.read_text()
             '{\\n  "name": "Easy File"\\n}'
         """
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.dump_json, data)
+        await asyncio.to_thread(self.dump_json, data)
 
     @overload
     async def load_yaml_async(self) -> Any: ...
@@ -421,12 +417,11 @@ class File(pathlib.Path):
             >>> print(data)
             {'debug': True}
         """
-        loop = asyncio.get_event_loop()
 
         def _load() -> Any:
             return self.load_yaml(type)  # type: ignore[arg-type]
 
-        return await loop.run_in_executor(None, _load)
+        return await asyncio.to_thread(_load)
 
     async def dump_yaml_async(self, data: Any) -> None:
         """Asynchronously dump data to this file as YAML.
@@ -441,8 +436,7 @@ class File(pathlib.Path):
             >>> settings.read_text()
             'debug: true\\n'
         """
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.dump_yaml, data)
+        await asyncio.to_thread(self.dump_yaml, data)
 
     def append_text(
         self,
