@@ -148,6 +148,7 @@ class File(pathlib.Path):
 
         Raises:
             JSONDecodeError: If JSON decoding fails
+            FileNotFoundError: If the file doesn't exist
 
         Example:
             >>> config = File("config.json")
@@ -229,6 +230,7 @@ class File(pathlib.Path):
 
         Raises:
             YAMLDecodeError: If YAML decoding fails
+            FileNotFoundError: If the file doesn't exist
 
         Example:
             >>> settings = File("settings.yaml")
@@ -394,6 +396,7 @@ class File(pathlib.Path):
 
         Raises:
             JSONDecodeError: If JSON decoding fails
+            FileNotFoundError: If the file doesn't exist
 
         Example:
             >>> import asyncio
@@ -443,6 +446,7 @@ class File(pathlib.Path):
 
         Raises:
             YAMLDecodeError: If YAML decoding fails
+            FileNotFoundError: If the file doesn't exist
 
         Example:
             >>> import asyncio

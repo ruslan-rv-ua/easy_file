@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `copy()` and `copy_async()` methods now return a `File` object for the target path, enabling fluent API usage
 - Updated README.md examples to use generic application names instead of package version numbers
 
+### Fixed
+- Added missing `FileNotFoundError` documentation to `load_json()`, `load_yaml()`, `load_json_async()`, and `load_yaml_async()` method docstrings
+
 ## [0.2.0] - 2025-12-23
 
 ### Added
