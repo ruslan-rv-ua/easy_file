@@ -85,11 +85,16 @@ class File(pathlib.Path):
             encoding = "utf-8"
         return super().open(mode, buffering, encoding, errors, newline)  # type: ignore[return-value]
 
-    def copy(self, target_path: str | pathlib.Path) -> File:
+    def copy(
+        self, target_path: str | pathlib.Path, preserve_metadata: bool = True
+    ) -> File:
         """Copy this file to the target path.
 
         Args:
             target_path: Destination path for the copy
+            preserve_metadata: Whether to preserve file metadata (timestamps, permissions).
+                               Defaults to True (uses shutil.copy2).
+                               If False, uses shutil.copy.
 
         Returns:
             File object for the target path
@@ -103,7 +108,12 @@ class File(pathlib.Path):
         """
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(self.read_bytes())
+
+        if preserve_metadata:
+            shutil.copy2(self, target)
+        else:
+            shutil.copy(self, target)
+
         return target
 
     def move(self, target_path: str | pathlib.Path) -> File:
