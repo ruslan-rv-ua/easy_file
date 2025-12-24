@@ -72,11 +72,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 - orjson for JSON serialization/deserialization
 - strictyaml for YAML operations
-
-## [Unreleased]
-
-### Planned
-- Additional file format support (CSV, TOML, etc.)
-- File watching capabilities
-- Extended error handling
-- Performance optimizations
