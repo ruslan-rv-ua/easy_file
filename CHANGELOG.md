@@ -29,15 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Typed deserialization support with dataclasses and TypedDict for JSON and YAML
-- Custom exceptions: [`FileOperationError`](src/easy_file/easy_file.py:22), [`JSONDecodeError`](src/easy_file/easy_file.py:28), [`YAMLDecodeError`](src/easy_file/easy_file.py:34)
-- Atomic writes for [`dump_json()`](src/easy_file/easy_file.py:150) and [`dump_yaml()`](src/easy_file/easy_file.py:226) methods
-- Context manager [`atomic_write()`](src/easy_file/easy_file.py:257) for atomic file writes
-- Async methods: [`read_text_async()`](src/easy_file/easy_file.py:303), [`write_text_async()`](src/easy_file/easy_file.py:326)
-- Async JSON methods: [`load_json_async()`](src/easy_file/easy_file.py:355), [`dump_json_async()`](src/easy_file/easy_file.py:382)
-- Async YAML methods: [`load_yaml_async()`](src/easy_file/easy_file.py:404), [`dump_yaml_async()`](src/easy_file/easy_file.py:431)
-- Utility method [`append_text()`](src/easy_file/easy_file.py:447) for appending text to files
-- Utility method [`touch_parents()`](src/easy_file/easy_file.py:471) for creating file and parent directories
-- Property [`size`](src/easy_file/easy_file.py:486) for getting file size in bytes
+- Custom exceptions: `FileOperationError`, `JSONDecodeError`, `YAMLDecodeError`
+- Atomic writes for `dump_json()` and `dump_yaml()` methods
+- Context manager `atomic_write()` for atomic file writes
+- Async methods: `read_text_async()`, `write_text_async()`
+- Async JSON methods: `load_json_async()`, `dump_json_async()`
+- Async YAML methods: `load_yaml_async()`, `dump_yaml_async()`
+- Utility method `append_text()` for appending text to files
+- Utility method `touch_parents()` for creating file and parent directories
+- Property `size` for getting file size in bytes
 
 ### Changed
 - Replaced orjson with [msgspec](https://github.com/jcrist/msgspec) for JSON serialization/deserialization
@@ -59,14 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of Easy File
-- [`File`](src/easy_file/easy_file.py:40) class extending `pathlib.Path`
+- `File` class extending `pathlib.Path`
 - UTF-8 default encoding for text file operations
-- [`open()`](src/easy_file/easy_file.py:54) method with automatic UTF-8 encoding
-- [`copy()`](src/easy_file/easy_file.py:87) method for file copying
-- [`load_json()`](src/easy_file/easy_file.py:110) method for JSON deserialization
-- [`dump_json()`](src/easy_file/easy_file.py:150) method for JSON serialization with formatting
-- [`load_yaml()`](src/easy_file/easy_file.py:186) method for YAML deserialization
-- [`dump_yaml()`](src/easy_file/easy_file.py:226) method for YAML serialization
+- `open()` method with automatic UTF-8 encoding
+- `copy()` method for file copying
+- `load_json()` method for JSON deserialization
+- `dump_json()` method for JSON serialization with formatting
+- `load_yaml()` method for YAML deserialization
+- `dump_yaml()` method for YAML serialization
 - Automatic directory creation when writing files
 - Full compatibility with all `pathlib.Path` methods
 

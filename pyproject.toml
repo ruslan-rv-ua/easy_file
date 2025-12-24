@@ -44,6 +44,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/easy_file"]
+artifacts = ["src/easy_file/py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
