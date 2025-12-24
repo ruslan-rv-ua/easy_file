@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `copy_async()` method for asynchronous file copying
+- Added `append_text_async()` method for asynchronous text appending
+- Added `read_bytes_async()` method for asynchronous byte reading
+- Added `write_bytes_async()` method for asynchronous byte writing
+
 ### Changed
 - Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` in all async methods for Python 3.12+ compatibility
 

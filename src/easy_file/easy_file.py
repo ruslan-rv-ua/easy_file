@@ -438,6 +438,76 @@ class File(pathlib.Path):
         """
         await asyncio.to_thread(self.dump_yaml, data)
 
+    async def copy_async(self, target_path: str | pathlib.Path) -> None:
+        """Asynchronously copy this file to the target path.
+
+        Args:
+            target_path: Destination path for the copy
+
+        Example:
+            >>> import asyncio
+            >>> source = File("source.txt")
+            >>> source.write_text("Original content")
+            >>> asyncio.run(source.copy_async("backup.txt"))
+            >>> File("backup.txt").read_text()
+            'Original content'
+        """
+        await asyncio.to_thread(self.copy, target_path)
+
+    async def append_text_async(
+        self,
+        text: str,
+        encoding: str = "utf-8",
+        errors: str | None = None,
+    ) -> None:
+        """Asynchronously append text to this file.
+
+        Args:
+            text: Text to append
+            encoding: Text encoding (default: 'utf-8')
+            errors: Error handling strategy
+
+        Example:
+            >>> import asyncio
+            >>> f = File("log.txt")
+            >>> f.write_text("First line\\n")
+            >>> asyncio.run(f.append_text_async("Second line\\n"))
+            >>> f.read_text()
+            'First line\\nSecond line\\n'
+        """
+        await asyncio.to_thread(self.append_text, text, encoding, errors)
+
+    async def read_bytes_async(self) -> bytes:
+        """Asynchronously read bytes from this file.
+
+        Returns:
+            File content as bytes
+
+        Example:
+            >>> import asyncio
+            >>> f = File("data.bin")
+            >>> f.write_bytes(b"\\x00\\x01\\x02")
+            >>> content = asyncio.run(f.read_bytes_async())
+            >>> print(content)
+            b'\\x00\\x01\\x02'
+        """
+        return await asyncio.to_thread(self.read_bytes)
+
+    async def write_bytes_async(self, data: bytes) -> None:
+        """Asynchronously write bytes to this file.
+
+        Args:
+            data: Bytes to write
+
+        Example:
+            >>> import asyncio
+            >>> f = File("data.bin")
+            >>> asyncio.run(f.write_bytes_async(b"\\x00\\x01\\x02"))
+            >>> f.read_bytes()
+            b'\\x00\\x01\\x02'
+        """
+        await asyncio.to_thread(self.write_bytes, data)
+
     def append_text(
         self,
         text: str,
