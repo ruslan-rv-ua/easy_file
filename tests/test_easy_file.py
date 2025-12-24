@@ -97,6 +97,68 @@ class TestFileCopy:
         assert target.read_text() == "test content"
 
 
+class TestFileMove:
+    """Test File.move() method."""
+
+    def test_move_file(self, temp_dir: pathlib.Path) -> None:
+        """Test moving a file."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("test content")
+        moved = source.move(target_path)
+
+        assert moved.exists()
+        assert moved.read_text() == "test content"
+        assert not source.exists()
+
+    def test_move_creates_parent_directories(self, temp_dir: pathlib.Path) -> None:
+        """Test that move creates parent directories if needed."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "nested" / "deep" / "target.txt"
+
+        source.write_text("test content")
+        moved = source.move(target_path)
+
+        assert moved.exists()
+        assert moved.read_text() == "test content"
+        assert not source.exists()
+
+    def test_move_source_deleted(self, temp_dir: pathlib.Path) -> None:
+        """Test that source file is deleted after move."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("content to move")
+        source.move(target_path)
+
+        assert not source.exists()
+        assert File(target_path).exists()
+
+    def test_move_overwrites_existing(self, temp_dir: pathlib.Path) -> None:
+        """Test that move overwrites existing target file."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("new content")
+        target = File(target_path)
+        target.write_text("old content")
+
+        moved = source.move(target_path)
+
+        assert moved.exists()
+        assert moved.read_text() == "new content"
+        assert not source.exists()
+
+    def test_move_missing_source(self, temp_dir: pathlib.Path) -> None:
+        """Test that moving a missing source raises FileNotFoundError."""
+        source = File(temp_dir / "missing.txt")
+        target_path = temp_dir / "target.txt"
+
+        with pytest.raises(FileNotFoundError):
+            source.move(target_path)
+
+
 class TestFileJson:
     """Test File JSON operations."""
 
@@ -495,6 +557,224 @@ class TestAsyncMethods:
         await test_file.write_text_async("Привіт світ!", encoding="utf-8")
 
         assert test_file.read_text(encoding="utf-8") == "Привіт світ!"
+
+    @pytest.mark.asyncio
+    async def test_read_bytes_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async bytes reading."""
+        test_file = File(temp_dir / "async.bin")
+        test_file.write_bytes(b"\x00\x01\x02\x03\x04")
+
+        content = await test_file.read_bytes_async()
+
+        assert content == b"\x00\x01\x02\x03\x04"
+
+    @pytest.mark.asyncio
+    async def test_write_bytes_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async bytes writing."""
+        test_file = File(temp_dir / "async.bin")
+
+        await test_file.write_bytes_async(b"\x00\x01\x02\x03\x04")
+
+        assert test_file.read_bytes() == b"\x00\x01\x02\x03\x04"
+
+    @pytest.mark.asyncio
+    async def test_read_write_bytes_async_roundtrip(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test async bytes read/write roundtrip."""
+        test_file = File(temp_dir / "async.bin")
+        original_data = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"
+
+        await test_file.write_bytes_async(original_data)
+        read_data = await test_file.read_bytes_async()
+
+        assert read_data == original_data
+
+    @pytest.mark.asyncio
+    async def test_read_bytes_async_empty_file(self, temp_dir: pathlib.Path) -> None:
+        """Test async bytes reading from empty file."""
+        test_file = File(temp_dir / "empty.bin")
+        test_file.write_bytes(b"")
+
+        content = await test_file.read_bytes_async()
+
+        assert content == b""
+
+    @pytest.mark.asyncio
+    async def test_read_bytes_async_missing_file(self, temp_dir: pathlib.Path) -> None:
+        """Test async bytes reading from missing file raises FileNotFoundError."""
+        test_file = File(temp_dir / "missing.bin")
+
+        with pytest.raises(FileNotFoundError):
+            await test_file.read_bytes_async()
+
+    @pytest.mark.asyncio
+    async def test_write_bytes_async_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that write_bytes_async creates parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "async.bin")
+
+        await test_file.write_bytes_async(b"\x00\x01\x02")
+
+        assert test_file.exists()
+        assert test_file.read_bytes() == b"\x00\x01\x02"
+
+    @pytest.mark.asyncio
+    async def test_append_text_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async appending text to existing file."""
+        test_file = File(temp_dir / "append.txt")
+        test_file.write_text("First line\n")
+
+        await test_file.append_text_async("Second line\n")
+
+        assert test_file.read_text() == "First line\nSecond line\n"
+
+    @pytest.mark.asyncio
+    async def test_append_text_async_creates_file(self, temp_dir: pathlib.Path) -> None:
+        """Test that append_text_async creates file if it doesn't exist."""
+        test_file = File(temp_dir / "new.txt")
+
+        await test_file.append_text_async("Appended content")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Appended content"
+
+    @pytest.mark.asyncio
+    async def test_append_text_async_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that append_text_async creates parent directories."""
+        test_file = File(temp_dir / "nested" / "deep" / "file.txt")
+
+        await test_file.append_text_async("Nested append")
+
+        assert test_file.exists()
+        assert test_file.read_text() == "Nested append"
+
+    @pytest.mark.asyncio
+    async def test_append_text_async_multiple_times(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test multiple async appends to same file."""
+        test_file = File(temp_dir / "multi.txt")
+
+        await test_file.append_text_async("Line 1\n")
+        await test_file.append_text_async("Line 2\n")
+        await test_file.append_text_async("Line 3\n")
+
+        assert test_file.read_text() == "Line 1\nLine 2\nLine 3\n"
+
+    @pytest.mark.asyncio
+    async def test_append_text_async_encoding(self, temp_dir: pathlib.Path) -> None:
+        """Test async appending text with custom encoding."""
+        test_file = File(temp_dir / "encoding.txt")
+        test_file.write_text("Привіт ", encoding="utf-8")
+
+        await test_file.append_text_async("світ!", encoding="utf-8")
+
+        assert test_file.read_text(encoding="utf-8") == "Привіт світ!"
+
+    @pytest.mark.asyncio
+    async def test_move_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async moving a file."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("test content")
+        moved = await source.move_async(target_path)
+
+        assert moved.exists()
+        assert moved.read_text() == "test content"
+        assert not source.exists()
+
+    @pytest.mark.asyncio
+    async def test_move_async_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that async move creates parent directories if needed."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "nested" / "deep" / "target.txt"
+
+        source.write_text("test content")
+        moved = await source.move_async(target_path)
+
+        assert moved.exists()
+        assert moved.read_text() == "test content"
+        assert not source.exists()
+
+    @pytest.mark.asyncio
+    async def test_move_async_source_deleted(self, temp_dir: pathlib.Path) -> None:
+        """Test that source file is deleted after async move."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("content to move")
+        await source.move_async(target_path)
+
+        assert not source.exists()
+        assert File(target_path).exists()
+
+    @pytest.mark.asyncio
+    async def test_copy_async(self, temp_dir: pathlib.Path) -> None:
+        """Test async copying a file."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        source.write_text("test content")
+        copied = await source.copy_async(target_path)
+
+        assert copied.exists()
+        assert copied.read_text() == "test content"
+        assert source.exists()
+        assert source.read_text() == "test content"
+
+    @pytest.mark.asyncio
+    async def test_copy_async_creates_parent_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """Test that async copy creates parent directories if needed."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "nested" / "deep" / "target.txt"
+
+        source.write_text("test content")
+        copied = await source.copy_async(target_path)
+
+        assert copied.exists()
+        assert copied.read_text() == "test content"
+        assert source.exists()
+
+    @pytest.mark.asyncio
+    async def test_copy_async_binary_file(self, temp_dir: pathlib.Path) -> None:
+        """Test async copying a binary file."""
+        source = File(temp_dir / "source.bin")
+        target_path = temp_dir / "target.bin"
+
+        source.write_bytes(b"\x00\x01\x02\x03\x04\x05")
+        copied = await source.copy_async(target_path)
+
+        assert copied.exists()
+        assert copied.read_bytes() == b"\x00\x01\x02\x03\x04\x05"
+        assert source.exists()
+        assert source.read_bytes() == b"\x00\x01\x02\x03\x04\x05"
+
+    @pytest.mark.asyncio
+    async def test_copy_async_source_preserved(self, temp_dir: pathlib.Path) -> None:
+        """Test that source file is preserved after async copy."""
+        source = File(temp_dir / "source.txt")
+        target_path = temp_dir / "target.txt"
+
+        original_content = "Original content that should be preserved"
+        source.write_text(original_content)
+        copied = await source.copy_async(target_path)
+
+        # Verify source still exists and has original content
+        assert source.exists()
+        assert source.read_text() == original_content
+
+        # Verify copy was created correctly
+        assert copied.exists()
+        assert copied.read_text() == original_content
 
 
 class TestUtilityMethods:

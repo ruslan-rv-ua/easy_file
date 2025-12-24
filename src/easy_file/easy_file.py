@@ -387,7 +387,12 @@ class File(pathlib.Path):
             >>> f.read_text()
             'Hello async'
         """
-        await asyncio.to_thread(self.write_text, data, encoding, errors)
+
+        def _write() -> None:
+            self.parent.mkdir(parents=True, exist_ok=True)
+            self.write_text(data, encoding, errors)
+
+        await asyncio.to_thread(_write)
 
     @overload
     async def load_json_async(self) -> Any: ...
@@ -577,7 +582,12 @@ class File(pathlib.Path):
             >>> f.read_bytes()
             b'\\x00\\x01\\x02'
         """
-        await asyncio.to_thread(self.write_bytes, data)
+
+        def _write() -> None:
+            self.parent.mkdir(parents=True, exist_ok=True)
+            self.write_bytes(data)
+
+        await asyncio.to_thread(_write)
 
     def append_text(
         self,
