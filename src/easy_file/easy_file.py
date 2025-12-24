@@ -147,13 +147,15 @@ class File(pathlib.Path):
         except msgspec.DecodeError as e:
             raise JSONDecodeError(f"Failed to decode JSON from {self}: {e}") from e
 
-    def dump_json(self, data: Any) -> None:
+    def dump_json(self, data: Any, indent: int = 2) -> None:
         """Dump data to this file as formatted JSON.
 
         Uses atomic writes to ensure data integrity.
 
         Args:
             data: Data to serialize as JSON
+            indent: Number of spaces for indentation (default: 2).
+                    Set to 0 for compact output.
 
         Example:
             >>> config = File("config.json")
@@ -163,6 +165,9 @@ class File(pathlib.Path):
         """
         self.parent.mkdir(parents=True, exist_ok=True)
         json_bytes = _json_encoder.encode(data)
+
+        if indent > 0:
+            json_bytes = msgspec.json.format(json_bytes, indent=indent)
 
         # Atomic write using temporary file
         with tempfile.NamedTemporaryFile(
@@ -376,11 +381,13 @@ class File(pathlib.Path):
 
         return await asyncio.to_thread(_load)
 
-    async def dump_json_async(self, data: Any) -> None:
+    async def dump_json_async(self, data: Any, indent: int = 2) -> None:
         """Asynchronously dump data to this file as formatted JSON.
 
         Args:
             data: Data to serialize as JSON
+            indent: Number of spaces for indentation (default: 2).
+                    Set to 0 for compact output.
 
         Example:
             >>> import asyncio
@@ -389,7 +396,7 @@ class File(pathlib.Path):
             >>> config.read_text()
             '{\\n  "name": "Easy File"\\n}'
         """
-        await asyncio.to_thread(self.dump_json, data)
+        await asyncio.to_thread(self.dump_json, data, indent)
 
     @overload
     async def load_yaml_async(self) -> Any: ...

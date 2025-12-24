@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `append_text_async()` method for asynchronous text appending
 - Added `read_bytes_async()` method for asynchronous byte reading
 - Added `write_bytes_async()` method for asynchronous byte writing
+- Added `indent` parameter to `dump_json()` and `dump_json_async()` methods for controlling JSON formatting
 
 ### Changed
 - Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` in all async methods for Python 3.12+ compatibility
+- `dump_json()` now properly formats JSON with indentation by default (2 spaces), matching the documented behavior
 
 ## [0.2.0] - 2025-12-23
 
