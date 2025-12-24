@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import pathlib
 import shutil
 import tempfile
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any, BinaryIO, TextIO, TypeVar, cast, overload
 
 import msgspec
@@ -192,6 +193,41 @@ class File(pathlib.Path):
         except msgspec.DecodeError as e:
             raise JSONDecodeError(f"Failed to decode JSON from {self}: {e}") from e
 
+    def _atomic_write_bytes(self, data: bytes) -> None:
+        """Internal method for atomic write of bytes data.
+
+        Creates a temporary file, writes the data, flushes to disk,
+        and atomically renames it to the target path. Ensures data
+        integrity even if the process crashes during write.
+
+        Args:
+            data: Bytes to write atomically
+
+        Raises:
+            OSError: If write or rename fails
+        """
+        self.parent.mkdir(parents=True, exist_ok=True)
+
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=self.parent,
+                prefix=f".{self.name}.",
+                delete=False,
+            ) as tmp_file:
+                tmp_path = pathlib.Path(tmp_file.name)
+                tmp_file.write(data)
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+
+            tmp_path.replace(self)
+        except Exception:
+            if tmp_path is not None and tmp_path.exists():
+                with suppress(OSError):
+                    tmp_path.unlink(missing_ok=True)
+            raise
+
     def dump_json(self, data: Any, indent: int = 2) -> None:
         """Dump data to this file as formatted JSON.
 
@@ -208,24 +244,12 @@ class File(pathlib.Path):
             >>> config.read_text()
             '{\\n  "name": "Easy File",\\n  "version": "0.4.0"\\n}'
         """
-        self.parent.mkdir(parents=True, exist_ok=True)
         json_bytes = _json_encoder.encode(data)
 
         if indent > 0:
             json_bytes = msgspec.json.format(json_bytes, indent=indent)
 
-        # Atomic write using temporary file
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=self.parent,
-            prefix=f".{self.name}.",
-            delete=False,
-        ) as tmp_file:
-            tmp_path = pathlib.Path(tmp_file.name)
-            tmp_file.write(json_bytes)
-
-        # Atomic rename
-        tmp_path.replace(self)
+        self._atomic_write_bytes(json_bytes)
 
     @overload
     def load_yaml(self) -> Any: ...
@@ -288,21 +312,8 @@ class File(pathlib.Path):
             >>> settings.read_text()
             'debug: true\\nport: 8080\\n'
         """
-        self.parent.mkdir(parents=True, exist_ok=True)
         yaml_bytes = msgspec.yaml.encode(data)
-
-        # Atomic write using temporary file
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=self.parent,
-            prefix=f".{self.name}.",
-            delete=False,
-        ) as tmp_file:
-            tmp_path = pathlib.Path(tmp_file.name)
-            tmp_file.write(yaml_bytes)
-
-        # Atomic rename
-        tmp_path.replace(self)
+        self._atomic_write_bytes(yaml_bytes)
 
     @contextmanager
     def atomic_write(self, mode: str = "w", encoding: str | None = None) -> Any:
@@ -330,26 +341,32 @@ class File(pathlib.Path):
 
         self.parent.mkdir(parents=True, exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(
-            mode=mode,
-            dir=self.parent,
-            prefix=f".{self.name}.",
-            encoding=encoding,
-            delete=False,
-        ) as tmp_file:
-            tmp_path = pathlib.Path(tmp_file.name)
-            try:
-                yield tmp_file
-                tmp_file.flush()
-                # Close the file before replace/unlink to avoid Windows file lock issues
-                tmp_file.close()
-            except Exception:
-                # Close the file before unlink to avoid Windows file lock issues
-                tmp_file.close()
-                tmp_path.unlink(missing_ok=True)
-                raise
-            else:
-                tmp_path.replace(self)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode=mode,
+                dir=self.parent,
+                prefix=f".{self.name}.",
+                encoding=encoding,
+                delete=False,
+            ) as tmp_file:
+                tmp_path = pathlib.Path(tmp_file.name)
+                try:
+                    yield tmp_file
+                    tmp_file.flush()
+                    # Close the file before replace/unlink to avoid Windows file lock issues
+                    tmp_file.close()
+                except Exception:
+                    # Close the file before unlink to avoid Windows file lock issues
+                    tmp_file.close()
+                    raise
+                else:
+                    tmp_path.replace(self)
+        except Exception:
+            if tmp_path is not None and tmp_path.exists():
+                with suppress(OSError):
+                    tmp_path.unlink(missing_ok=True)
+            raise
 
     async def read_text_async(
         self, encoding: str = "utf-8", errors: str | None = None
