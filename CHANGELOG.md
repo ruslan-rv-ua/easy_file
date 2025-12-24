@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Added missing `FileNotFoundError` documentation to `load_json()`, `load_yaml()`, `load_json_async()`, and `load_yaml_async()` method docstrings
+- Fixed `write_bytes_async()` and `write_text_async()` methods to create parent directories automatically, matching the behavior of their synchronous counterparts
 
 ## [0.2.0] - 2025-12-23
 
