@@ -96,6 +96,17 @@ class TestFileCopy:
         assert target.exists()
         assert target.read_text() == "test content"
 
+    def test_copy_without_metadata(self, temp_dir: pathlib.Path) -> None:
+        """Test copying a file without preserving metadata."""
+        source = File(temp_dir / "source.txt")
+        target = File(temp_dir / "target.txt")
+
+        source.write_text("test content")
+        source.copy(target, preserve_metadata=False)
+
+        assert target.exists()
+        assert target.read_text() == "test content"
+
 
 class TestFileMove:
     """Test File.move() method."""
