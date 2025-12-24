@@ -44,8 +44,8 @@ content = f.read_text()  # "Привіт світ!"
 
 # JSON operations
 config = File("config.json")
-config.dump_json({"name": "Easy File", "version": "0.2.0"})
-data = config.load_json()  # {"name": "Easy File", "version": "0.2.0"}
+config.dump_json({"name": "My App", "version": "1.0.0"})
+data = config.load_json()  # {"name": "My App", "version": "1.0.0"}
 
 # YAML operations
 settings = File("settings.yaml")
@@ -92,11 +92,11 @@ class Config(TypedDict):
     debug: bool
 
 config = File("config.json")
-config.dump_json({"name": "Easy File", "version": "0.2.0", "debug": True})
+config.dump_json({"name": "My App", "version": "1.0.0", "debug": True})
 
 # Типізована десеріалізація
 data: Config = config.load_json(Config)
-print(data["name"])  # "Easy File"
+print(data["name"])  # "My App"
 ```
 
 ### Використання з dataclasses
@@ -147,7 +147,7 @@ from easy_file import File
 
 async def main():
     config = File("config.json")
-    await config.dump_json_async({"name": "Easy File", "version": "0.2.0"})
+    await config.dump_json_async({"name": "My App", "version": "1.0.0"})
     data = await config.load_json_async()
     print(data)  # {"name": "Easy File", "version": "0.2.0"}
 

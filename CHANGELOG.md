@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` in all async methods for Python 3.12+ compatibility
 - `dump_json()` now properly formats JSON with indentation by default (2 spaces), matching the documented behavior
 - `copy()` and `copy_async()` methods now return a `File` object for the target path, enabling fluent API usage
+- Updated README.md examples to use generic application names instead of package version numbers
 
 ## [0.2.0] - 2025-12-23
 
