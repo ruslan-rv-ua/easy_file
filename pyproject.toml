@@ -21,7 +21,6 @@ classifiers = [
 
 dependencies = [
     "msgspec>=0.18.0",
-    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -86,3 +85,13 @@ ignore = [
 indent-style = "space"
 quote-style = "double"
 skip-magic-trailing-comma = false
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.10",
+]
