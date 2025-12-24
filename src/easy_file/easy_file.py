@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
+import shutil
 import tempfile
 from contextlib import contextmanager
 from typing import Any, BinaryIO, TextIO, TypeVar, overload
@@ -103,6 +104,29 @@ class File(pathlib.Path):
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(self.read_bytes())
+        return target
+
+    def move(self, target_path: str | pathlib.Path) -> File:
+        """Move this file to the target path.
+
+        Args:
+            target_path: Destination path for the move
+
+        Returns:
+            File object for the target path
+
+        Example:
+            >>> source = File("source.txt")
+            >>> source.write_text("Content")
+            >>> moved = source.move("target.txt")
+            >>> moved.read_text()
+            'Content'
+            >>> source.exists()
+            False
+        """
+        target = File(target_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(self), str(target))
         return target
 
     @overload
@@ -467,6 +491,25 @@ class File(pathlib.Path):
             'Original content'
         """
         return await asyncio.to_thread(self.copy, target_path)
+
+    async def move_async(self, target_path: str | pathlib.Path) -> File:
+        """Asynchronously move this file to the target path.
+
+        Args:
+            target_path: Destination path for the move
+
+        Returns:
+            File object for the target path
+
+        Example:
+            >>> import asyncio
+            >>> source = File("source.txt")
+            >>> source.write_text("Content")
+            >>> moved = asyncio.run(source.move_async("target.txt"))
+            >>> moved.read_text()
+            'Content'
+        """
+        return await asyncio.to_thread(self.move, target_path)
 
     async def append_text_async(
         self,
