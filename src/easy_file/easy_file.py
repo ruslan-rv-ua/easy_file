@@ -84,22 +84,26 @@ class File(pathlib.Path):
             encoding = "utf-8"
         return super().open(mode, buffering, encoding, errors, newline)  # type: ignore[return-value]
 
-    def copy(self, target_path: str | pathlib.Path) -> None:
+    def copy(self, target_path: str | pathlib.Path) -> File:
         """Copy this file to the target path.
 
         Args:
             target_path: Destination path for the copy
 
+        Returns:
+            File object for the target path
+
         Example:
             >>> source = File("source.txt")
             >>> source.write_text("Original content")
-            >>> source.copy("backup.txt")
-            >>> File("backup.txt").read_text()
+            >>> backup = source.copy("backup.txt")
+            >>> backup.read_text()
             'Original content'
         """
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(self.read_bytes())
+        return target
 
     @overload
     def load_json(self) -> Any: ...
@@ -445,21 +449,24 @@ class File(pathlib.Path):
         """
         await asyncio.to_thread(self.dump_yaml, data)
 
-    async def copy_async(self, target_path: str | pathlib.Path) -> None:
+    async def copy_async(self, target_path: str | pathlib.Path) -> File:
         """Asynchronously copy this file to the target path.
 
         Args:
             target_path: Destination path for the copy
 
+        Returns:
+            File object for the target path
+
         Example:
             >>> import asyncio
             >>> source = File("source.txt")
             >>> source.write_text("Original content")
-            >>> asyncio.run(source.copy_async("backup.txt"))
-            >>> File("backup.txt").read_text()
+            >>> backup = asyncio.run(source.copy_async("backup.txt"))
+            >>> backup.read_text()
             'Original content'
         """
-        await asyncio.to_thread(self.copy, target_path)
+        return await asyncio.to_thread(self.copy, target_path)
 
     async def append_text_async(
         self,
