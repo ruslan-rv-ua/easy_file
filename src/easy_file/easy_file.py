@@ -7,7 +7,7 @@ import pathlib
 import shutil
 import tempfile
 from contextlib import contextmanager
-from typing import Any, BinaryIO, TextIO, TypeVar, overload
+from typing import Any, BinaryIO, TextIO, TypeVar, cast, overload
 
 import msgspec
 
@@ -86,7 +86,10 @@ class File(pathlib.Path):
         """
         if encoding is None and "b" not in mode:
             encoding = "utf-8"
-        return super().open(mode, buffering, encoding, errors, newline, **kwargs)  # type: ignore[return-value]
+        return cast(
+            TextIO | BinaryIO,
+            super().open(mode, buffering, encoding, errors, newline, **kwargs),
+        )
 
     def copy(
         self, target_path: str | pathlib.Path, preserve_metadata: bool = True
@@ -184,7 +187,7 @@ class File(pathlib.Path):
         try:
             content = self.read_bytes()
             if type is not None:
-                return msgspec.json.decode(content, type=type)  # type: ignore[return-value]
+                return msgspec.json.decode(content, type=type)
             return _json_decoder.decode(content)
         except msgspec.DecodeError as e:
             raise JSONDecodeError(f"Failed to decode JSON from {self}: {e}") from e
@@ -266,7 +269,7 @@ class File(pathlib.Path):
         try:
             content = self.read_bytes()
             if type is not None:
-                return msgspec.yaml.decode(content, type=type)  # type: ignore[return-value]
+                return msgspec.yaml.decode(content, type=type)
             return msgspec.yaml.decode(content)
         except msgspec.DecodeError as e:
             raise YAMLDecodeError(f"Failed to decode YAML from {self}: {e}") from e
@@ -614,7 +617,7 @@ class File(pathlib.Path):
         """
         self.parent.mkdir(parents=True, exist_ok=True)
         with self.open(mode="a", encoding=encoding, errors=errors) as f:
-            f.write(text)  # type: ignore[arg-type]
+            cast(TextIO, f).write(text)
 
     def touch_parents(self) -> None:
         """Create this file and all parent directories if they don't exist.
