@@ -59,8 +59,10 @@ class File(pathlib.Path):
         encoding: str | None = None,
         errors: str | None = None,
         newline: str | None = None,
+        **kwargs: Any,
     ) -> TextIO | BinaryIO:
         """Open the file with UTF-8 default encoding for text modes.
+        Forwards additional arguments to pathlib.Path.open().
 
         Args:
             mode: File opening mode ('r', 'w', 'rb', 'wb', etc.)
@@ -68,6 +70,7 @@ class File(pathlib.Path):
             encoding: Text encoding (defaults to UTF-8 for text modes)
             errors: Error handling strategy
             newline: Newline handling
+            **kwargs: Additional arguments forwarded to pathlib.Path.open()
 
         Returns:
             File object (TextIO or BinaryIO)
@@ -83,7 +86,7 @@ class File(pathlib.Path):
         """
         if encoding is None and "b" not in mode:
             encoding = "utf-8"
-        return super().open(mode, buffering, encoding, errors, newline)  # type: ignore[return-value]
+        return super().open(mode, buffering, encoding, errors, newline, **kwargs)  # type: ignore[return-value]
 
     def copy(
         self, target_path: str | pathlib.Path, preserve_metadata: bool = True
