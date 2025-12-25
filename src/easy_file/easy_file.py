@@ -220,6 +220,8 @@ class File(pathlib.Path):
                 tmp_file.write(data)
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
+                # Явне закриття перед rename на Windows
+                tmp_file.close()
 
             tmp_path.replace(self)
         except Exception:
@@ -329,6 +331,9 @@ class File(pathlib.Path):
         Yields:
             File object for writing
 
+        Raises:
+            ValueError: If encoding is specified in binary mode
+
         Example:
             >>> f = File("data.txt")
             >>> with f.atomic_write() as file:
@@ -336,6 +341,9 @@ class File(pathlib.Path):
             >>> f.read_text()
             'Atomic content'
         """
+        if encoding is not None and "b" in mode:
+            raise ValueError("encoding argument not supported in binary mode")
+
         if encoding is None and "b" not in mode:
             encoding = "utf-8"
 
@@ -515,11 +523,16 @@ class File(pathlib.Path):
         """
         await asyncio.to_thread(self.dump_yaml, data)
 
-    async def copy_async(self, target_path: str | pathlib.Path) -> File:
+    async def copy_async(
+        self, target_path: str | pathlib.Path, preserve_metadata: bool = True
+    ) -> File:
         """Asynchronously copy this file to the target path.
 
         Args:
             target_path: Destination path for the copy
+            preserve_metadata: Whether to preserve file metadata (timestamps, permissions).
+                               Defaults to True (uses shutil.copy2).
+                               If False, uses shutil.copy.
 
         Returns:
             File object for the target path
@@ -532,7 +545,7 @@ class File(pathlib.Path):
             >>> backup.read_text()
             'Original content'
         """
-        return await asyncio.to_thread(self.copy, target_path)
+        return await asyncio.to_thread(self.copy, target_path, preserve_metadata)
 
     async def move_async(self, target_path: str | pathlib.Path) -> File:
         """Asynchronously move this file to the target path.
