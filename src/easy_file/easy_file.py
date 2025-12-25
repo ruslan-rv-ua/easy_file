@@ -8,7 +8,6 @@ import pathlib
 from contextlib import contextmanager, suppress
 from typing import Any, BinaryIO, TextIO, TypeVar, cast, overload
 
-import aiofiles
 import msgspec
 
 # Global encoder and decoder for msgspec JSON
@@ -408,8 +407,7 @@ class File(pathlib.Path):
             >>> print(content)
             Hello
         """
-        async with aiofiles.open(self, encoding=encoding, errors=errors) as f:
-            return await f.read()
+        return await asyncio.to_thread(self.read_text, encoding, errors)
 
     async def write_text_async(
         self,
@@ -431,9 +429,7 @@ class File(pathlib.Path):
             >>> f.read_text()
             'Hello async'
         """
-        self.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(self, mode="w", encoding=encoding, errors=errors) as f:
-            await f.write(data)
+        await asyncio.to_thread(self.write_text, data, encoding, errors)
 
     @overload
     async def load_json_async(self) -> Any: ...
@@ -613,8 +609,7 @@ class File(pathlib.Path):
             >>> print(content)
             b'\\x00\\x01\\x02'
         """
-        async with aiofiles.open(self, mode="rb") as f:
-            return await f.read()
+        return await asyncio.to_thread(self.read_bytes)
 
     async def write_bytes_async(self, data: bytes) -> None:
         """Asynchronously write bytes to this file.
@@ -629,9 +624,7 @@ class File(pathlib.Path):
             >>> f.read_bytes()
             b'\\x00\\x01\\x02'
         """
-        self.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(self, mode="wb") as f:
-            await f.write(data)
+        await asyncio.to_thread(self.write_bytes, data)
 
     @classmethod
     async def read_many_async(cls, paths: list[str | pathlib.Path]) -> list[str]:

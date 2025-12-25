@@ -109,7 +109,7 @@ print(data.port)  # 8080
 
 ### Async Methods
 
-Easy File provides asynchronous versions of all major I/O operations for non-blocking execution. All async methods use **aiofiles** for efficient non-blocking I/O operations.
+Easy File provides asynchronous versions of all major I/O operations for non-blocking execution.
 
 ```python
 import asyncio
