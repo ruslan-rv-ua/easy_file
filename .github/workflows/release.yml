@@ -1,9 +1,18 @@
+---
 name: Release
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Version to release (e.g., 1.2.3).
+          Leave empty to use version from pyproject.toml
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -13,66 +22,86 @@ jobs:
   validate:
     name: Validate release
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      
+
       - name: Set up Python
         run: uv python install 3.12
-      
+
       - name: Validate version match
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          echo "Tag version: $TAG_VERSION"
-          
           # Отримуємо версію з pyproject.toml
-          PACKAGE_VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          PACKAGE_VERSION=$(uv run python -c \
+            "import tomllib; \
+            print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           echo "Package version: $PACKAGE_VERSION"
-          
-          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "❌ Version mismatch!"
-            echo "Git tag: v$TAG_VERSION"
-            echo "pyproject.toml: $PACKAGE_VERSION"
-            exit 1
+
+          # Перевіряємо відповідність версій
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # При push тега - перевіряємо відповідність тега
+            TAG_VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Tag version: $TAG_VERSION"
+
+            if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+              echo "❌ Version mismatch!"
+              echo "Git tag: v$TAG_VERSION"
+              echo "pyproject.toml: $PACKAGE_VERSION"
+              exit 1
+            fi
+          elif [ -n "${{ inputs.version }}" ]; then
+            # При manual run з вказаною версією
+            INPUT_VERSION="${{ inputs.version }}"
+            echo "Input version: $INPUT_VERSION"
+
+            if [ "$INPUT_VERSION" != "$PACKAGE_VERSION" ]; then
+              echo "❌ Version mismatch!"
+              echo "Input: $INPUT_VERSION"
+              echo "pyproject.toml: $PACKAGE_VERSION"
+              exit 1
+            fi
+          else
+            # При manual run без версії
+            echo "Using version from pyproject.toml: $PACKAGE_VERSION"
           fi
-          echo "✅ Versions match!"
+          echo "✅ Version validated: $PACKAGE_VERSION"
 
   build:
     name: Build distribution
     needs: validate
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      
+
       - name: Set up Python
         run: uv python install 3.12
-      
+
       - name: Build package
         run: uv build
-      
+
       - name: Generate checksums
         run: |
           cd dist
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
-      
+
       - name: Check distribution
         run: |
           uv tool run twine check dist/*
-      
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -84,21 +113,24 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          prerelease: >-
+            ${{ contains(github.ref, 'alpha') ||
+            contains(github.ref, 'beta') ||
+            contains(github.ref, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -109,19 +141,19 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/${{ github.event.repository.name }}
-    
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-      
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           # Використовуємо trusted publishing (без токена)
           # print-hash: true
           # verbose: true
-          # Альтернативно: 
+          # Альтернативно:
           password: ${{ secrets.PYPI_API_TOKEN }}
