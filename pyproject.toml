@@ -21,6 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "aiofiles>=25.1.0",
     "msgspec>=0.18.0",
 ]
 
