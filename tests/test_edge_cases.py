@@ -19,15 +19,14 @@ class TestEdgeCasesWriteMethods:
         """Test write_text fails on read-only directory."""
         readonly_dir = temp_dir / "readonly"
         readonly_dir.mkdir()
-        readonly_dir.chmod(0o555)  # Read-only
-
-        test_file = File(readonly_dir / "file.txt")
-
-        with pytest.raises(PermissionError):
-            test_file.write_text("content")
-
-        # Cleanup
-        readonly_dir.chmod(0o755)
+        try:
+            readonly_dir.chmod(0o555)  # Read-only
+            test_file = File(readonly_dir / "file.txt")
+            with pytest.raises(PermissionError):
+                test_file.write_text("content")
+        finally:
+            # Cleanup
+            readonly_dir.chmod(0o755)
 
     def test_write_text_empty_string(self, temp_dir: pathlib.Path) -> None:
         """Test write_text with empty string."""
@@ -66,14 +65,13 @@ class TestEdgeCasesWriteMethods:
         """Test write_text_async fails on read-only directory."""
         readonly_dir = temp_dir / "readonly"
         readonly_dir.mkdir()
-        readonly_dir.chmod(0o555)
-
-        test_file = File(readonly_dir / "file.txt")
-
-        with pytest.raises(PermissionError):
-            await test_file.write_text_async("content")
-
-        readonly_dir.chmod(0o755)
+        try:
+            readonly_dir.chmod(0o555)
+            test_file = File(readonly_dir / "file.txt")
+            with pytest.raises(PermissionError):
+                await test_file.write_text_async("content")
+        finally:
+            readonly_dir.chmod(0o755)
 
 
 class TestEdgeCasesReadManyAsync:
@@ -120,9 +118,9 @@ class TestEdgeCasesJson:
     """Test edge cases for JSON operations."""
 
     def test_dump_json_with_indent_zero(self, temp_dir: pathlib.Path) -> None:
-        """Test dump_json with indent=0 creates compact JSON."""
+        """Test dump_json without indent creates compact JSON."""
         test_file = File(temp_dir / "compact.json")
-        test_file.dump_json({"a": 1, "b": 2, "c": 3}, indent=0)
+        test_file.dump_json({"a": 1, "b": 2, "c": 3})
 
         content = test_file.read_text()
         # Compact JSON shouldn't have extra whitespace

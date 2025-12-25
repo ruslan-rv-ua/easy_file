@@ -48,12 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved performance (~1.5-2x faster for JSON/YAML operations)
 - Reduced number of dependencies (single dependency: msgspec)
 
-### Features
-- Blazing fast JSON/YAML/MessagePack serialization powered by msgspec
-- Type-safe deserialization with automatic validation
-- Non-blocking async I/O operations
-- Data integrity guaranteed by atomic writes
-- Comprehensive error handling with custom exceptions
 
 ### Dependencies
 - msgspec for JSON/YAML serialization/deserialization
