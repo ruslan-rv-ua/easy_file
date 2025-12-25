@@ -118,9 +118,9 @@ class TestEdgeCasesJson:
     """Test edge cases for JSON operations."""
 
     def test_dump_json_with_indent_zero(self, temp_dir: pathlib.Path) -> None:
-        """Test dump_json without indent creates compact JSON."""
+        """Test dump_json with indent=0 creates compact JSON."""
         test_file = File(temp_dir / "compact.json")
-        test_file.dump_json({"a": 1, "b": 2, "c": 3})
+        test_file.dump_json({"a": 1, "b": 2, "c": 3}, indent=0)
 
         content = test_file.read_text()
         # Compact JSON shouldn't have extra whitespace
