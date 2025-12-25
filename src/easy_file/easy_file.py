@@ -216,18 +216,18 @@ class File(pathlib.Path):
                 prefix=f".{self.name}.",
                 delete=False,
             ) as tmp_file:
-                tmp_path = pathlib.Path(tmp_file.name)
+                tmp_path = tmp_file.name
                 tmp_file.write(data)
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
                 # Явне закриття перед rename на Windows
                 tmp_file.close()
 
-            tmp_path.replace(self)
+            os.replace(tmp_path, self)
         except Exception:
-            if tmp_path is not None and tmp_path.exists():
+            if tmp_path is not None and os.path.exists(tmp_path):
                 with suppress(OSError):
-                    tmp_path.unlink(missing_ok=True)
+                    os.remove(tmp_path)
             raise
 
     def dump_json(self, data: Any, indent: int = 2) -> None:
