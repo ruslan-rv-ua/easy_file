@@ -250,10 +250,13 @@ class File(pathlib.Path):
             >>> config.read_text()
             '{\\n  "name": "Easy File",\\n  "version": "0.4.0"\\n}'
         """
-        json_bytes = _json_encoder.encode(data)
-
         if indent > 0:
-            json_bytes = msgspec.json.format(json_bytes, indent=indent)
+            json_bytes = msgspec.json.format(
+                _json_encoder.encode(data),
+                indent=indent,
+            )
+        else:
+            json_bytes = _json_encoder.encode(data)
 
         self._atomic_write_bytes(json_bytes)
 
