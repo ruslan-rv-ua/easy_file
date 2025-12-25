@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 - msgspec for JSON/YAML serialization/deserialization
 
-## [0.1.0] - 2025-12-23
+## [0.1.0] - 2025-12-20
 
 ### Added
 - Initial release of Easy File
