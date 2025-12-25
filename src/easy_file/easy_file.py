@@ -634,6 +634,27 @@ class File(pathlib.Path):
 
         await asyncio.to_thread(_write)
 
+    @classmethod
+    async def read_many_async(cls, paths: list[str | pathlib.Path]) -> list[str]:
+        """Читати багато файлів паралельно.
+
+        Args:
+            paths: Список шляхів до файлів для читання
+
+        Returns:
+            Список вмісту файлів у тому ж порядку, що й шляхи
+
+        Example:
+            >>> import asyncio
+            >>> File("file1.txt").write_text("Content 1")
+            >>> File("file2.txt").write_text("Content 2")
+            >>> contents = asyncio.run(File.read_many_async(["file1.txt", "file2.txt"]))
+            >>> print(contents)
+            ['Content 1', 'Content 2']
+        """
+        tasks = [cls(p).read_text_async() for p in paths]
+        return await asyncio.gather(*tasks)
+
     def append_text(
         self,
         text: str,
