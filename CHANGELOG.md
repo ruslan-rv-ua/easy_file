@@ -18,13 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Replaced aiofiles with asyncio.to_thread() in all async methods for better compatibility and reduced dependencies
 - Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` in all async methods for Python 3.12+ compatibility
+
+### Fixed
+- Fixed `write_text()` and `write_bytes()` to create parent directories automatically as documented
+- Fixed `write_text_async()` and `write_bytes_async()` to create parent directories automatically
+- Improved consistency: all write methods now behave the same way regarding directory creation
 - `dump_json()` now properly formats JSON with indentation by default (2 spaces), matching the documented behavior
 - `copy()` and `copy_async()` methods now return a `File` object for the target path, enabling fluent API usage
 - Updated README.md examples to use generic application names instead of package version numbers
-
-### Fixed
 - Added missing `FileNotFoundError` documentation to `load_json()`, `load_yaml()`, `load_json_async()`, and `load_yaml_async()` method docstrings
-- Fixed `write_bytes_async()` and `write_text_async()` methods to create parent directories automatically, matching the behavior of their synchronous counterparts
 
 ## [0.2.0] - 2025-12-23
 
