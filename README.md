@@ -4,9 +4,6 @@
 <a href="https://pypi.python.org/pypi/easy_file">
     <img src="https://img.shields.io/pypi/v/easy_file.svg" alt="Release Status">
 </a>
-<a href="https://github.com/ruslan-rv-ua/easy_file/actions">
-    <img src="https://github.com/ruslan-rv-ua/easy_file/actions/workflows/main.yml/badge.svg?branch=release" alt="CI Status">
-</a>
 <a href="LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
 </a>
