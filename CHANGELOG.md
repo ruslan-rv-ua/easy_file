@@ -8,65 +8,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added `copy_async()` method for asynchronous file copying
-- Added `append_text_async()` method for asynchronous text appending
-- Added `read_bytes_async()` method for asynchronous byte reading
-- Added `write_bytes_async()` method for asynchronous byte writing
-- Added `indent` parameter to `dump_json()` and `dump_json_async()` methods for controlling JSON formatting
-- Added `move()` and `move_async()` methods for moving/renaming files with automatic parent directory creation
+- `copy_async()` - async file copying
+- `append_text_async()` - async text appending
+- `read_bytes_async()` / `write_bytes_async()` - async binary operations
+- `move()` / `move_async()` - move/rename files with auto parent directory creation
+- `indent` parameter to `dump_json()` and `dump_json_async()` for JSON formatting control
 
 ### Changed
-- Replaced aiofiles with asyncio.to_thread() in all async methods for better compatibility and reduced dependencies
-- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` in all async methods for Python 3.12+ compatibility
+- Replaced `aiofiles` with `asyncio.to_thread()` for better compatibility and fewer dependencies
+- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.to_thread()` (Python 3.12+ compatibility)
 
 ### Fixed
-- Fixed `write_text()` and `write_bytes()` to create parent directories automatically as documented
-- Fixed `write_text_async()` and `write_bytes_async()` to create parent directories automatically
-- Improved consistency: all write methods now behave the same way regarding directory creation
-- `dump_json()` now properly formats JSON with indentation by default (2 spaces), matching the documented behavior
-- `copy()` and `copy_async()` methods now return a `File` object for the target path, enabling fluent API usage
-- Updated README.md examples to use generic application names instead of package version numbers
-- Added missing `FileNotFoundError` documentation to `load_json()`, `load_yaml()`, `load_json_async()`, and `load_yaml_async()` method docstrings
+- `write_text()` / `write_bytes()` now create parent directories automatically (as documented)
+- `write_text_async()` / `write_bytes_async()` now create parent directories automatically
+- `dump_json()` properly formats JSON with indentation by default (2 spaces)
+- `copy()` / `copy_async()` return `File` object for fluent API
+- Added missing `FileNotFoundError` docs to `load_json()`, `load_yaml()`, `load_json_async()`, `load_yaml_async()`
 
 ## [0.2.0] - 2025-12-23
 
 ### Added
-- Typed deserialization support with dataclasses and TypedDict for JSON and YAML
+- Typed deserialization with `dataclasses` and `TypedDict` for JSON/YAML
 - Custom exceptions: `FileOperationError`, `JSONDecodeError`, `YAMLDecodeError`
-- Atomic writes for `dump_json()` and `dump_yaml()` methods
-- Context manager `atomic_write()` for atomic file writes
-- Async methods: `read_text_async()`, `write_text_async()`
-- Async JSON methods: `load_json_async()`, `dump_json_async()`
-- Async YAML methods: `load_yaml_async()`, `dump_yaml_async()`
-- Utility method `append_text()` for appending text to files
-- Utility method `touch_parents()` for creating file and parent directories
-- Property `size` for getting file size in bytes
+- Atomic writes for `dump_json()` and `dump_yaml()`
+- `atomic_write()` context manager
+- Async methods: `read_text_async()`, `write_text_async()`, `load_json_async()`, `dump_json_async()`, `load_yaml_async()`, `dump_yaml_async()`
+- `append_text()` utility method
+- `touch_parents()` - create file and parent directories
+- `size` property
 
 ### Changed
-- Replaced orjson with [msgspec](https://github.com/jcrist/msgspec) for JSON serialization/deserialization
-- Replaced strictyaml with msgspec.yaml for YAML serialization/deserialization
-- Improved performance (~1.5-2x faster for JSON/YAML operations)
-- Reduced number of dependencies (single dependency: msgspec)
-
-
-### Dependencies
-- msgspec for JSON/YAML serialization/deserialization
+- **Breaking**: Replaced `orjson` with `msgspec` (~1.5-2× faster)
+- **Breaking**: Replaced `strictyaml` with `msgspec.yaml`
+- Reduced to single dependency: `msgspec`
 
 ## [0.1.0] - 2025-12-20
 
 ### Added
-- Initial release of Easy File
+- Initial release
 - `File` class extending `pathlib.Path`
-- UTF-8 default encoding for text file operations
-- `open()` method with automatic UTF-8 encoding
-- `copy()` method for file copying
-- `load_json()` method for JSON deserialization
-- `dump_json()` method for JSON serialization with formatting
-- `load_yaml()` method for YAML deserialization
-- `dump_yaml()` method for YAML serialization
-- Automatic directory creation when writing files
-- Full compatibility with all `pathlib.Path` methods
+- UTF-8 default encoding
+- `open()`, `copy()`, `load_json()`, `dump_json()`, `load_yaml()`, `dump_yaml()`
+- Automatic directory creation on write
+- Full `pathlib.Path` compatibility
 
 ### Dependencies
-- orjson for JSON serialization/deserialization
-- strictyaml for YAML operations
+- `orjson` for JSON
+- `strictyaml` for YAML
+
+[Unreleased]: https://github.com/ruslan-rv-ua/easy_file/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ruslan-rv-ua/easy_file/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ruslan-rv-ua/easy_file/releases/tag/v0.1.0
