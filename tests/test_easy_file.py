@@ -1078,3 +1078,58 @@ class TestEdgeCases:
         assert loaded["negative"] == -10
         assert loaded["zero"] == 0
         assert loaded["large"] == 1000000
+
+
+class TestCriticalMissingTests:
+    """Critical tests for nested directory creation and missing file handling."""
+
+    def test_write_text_creates_nested_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """write_text MUST create parent directories."""
+        test_file = File(temp_dir / "a" / "b" / "c" / "file.txt")
+        test_file.write_text("content")
+        assert test_file.exists()
+        assert test_file.read_text() == "content"
+
+    def test_write_bytes_creates_nested_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """write_bytes MUST create parent directories."""
+        test_file = File(temp_dir / "a" / "b" / "c" / "file.bin")
+        test_file.write_bytes(b"content")
+        assert test_file.exists()
+        assert test_file.read_bytes() == b"content"
+
+    @pytest.mark.asyncio
+    async def test_write_text_async_creates_nested_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """write_text_async MUST create parent directories."""
+        test_file = File(temp_dir / "a" / "b" / "c" / "file_async.txt")
+        await test_file.write_text_async("content")
+        assert test_file.exists()
+        assert test_file.read_text() == "content"
+
+    @pytest.mark.asyncio
+    async def test_write_bytes_async_creates_nested_directories(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """write_bytes_async MUST create parent directories."""
+        test_file = File(temp_dir / "a" / "b" / "c" / "file_async.bin")
+        await test_file.write_bytes_async(b"content")
+        assert test_file.exists()
+        assert test_file.read_bytes() == b"content"
+
+    @pytest.mark.asyncio
+    async def test_read_many_async_with_missing_file(
+        self, temp_dir: pathlib.Path
+    ) -> None:
+        """read_many_async MUST raise FileNotFoundError for missing files."""
+        File(temp_dir / "file1.txt").write_text("content1")
+        # file2.txt НЕ існує
+
+        with pytest.raises(FileNotFoundError):
+            await File.read_many_async(
+                [str(temp_dir / "file1.txt"), str(temp_dir / "file2.txt")]
+            )

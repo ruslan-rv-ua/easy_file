@@ -92,6 +92,61 @@ class File(pathlib.Path):
             super().open(mode, buffering, encoding, errors, newline, **kwargs),
         )
 
+    def write_text(
+        self,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        """Write text to the file, automatically creating parent directories.
+
+        Args:
+            data: Text to write
+            encoding: Text encoding (defaults to UTF-8)
+            errors: Error handling strategy
+            newline: Newline handling
+
+        Returns:
+            Number of characters written
+        """
+        self.parent.mkdir(parents=True, exist_ok=True)
+        if encoding is None:
+            encoding = "utf-8"
+        return super().write_text(
+            data, encoding=encoding, errors=errors, newline=newline
+        )
+
+    def read_text(
+        self,
+        encoding: str | None = None,
+        errors: str | None = None,
+    ) -> str:
+        """Read text from the file with UTF-8 default encoding.
+
+        Args:
+            encoding: Text encoding (defaults to UTF-8)
+            errors: Error handling strategy
+
+        Returns:
+            File content as string
+        """
+        if encoding is None:
+            encoding = "utf-8"
+        return super().read_text(encoding=encoding, errors=errors)
+
+    def write_bytes(self, data: bytes) -> int:  # type: ignore[override]
+        """Write bytes to the file, automatically creating parent directories.
+
+        Args:
+            data: Bytes to write
+
+        Returns:
+            Number of bytes written
+        """
+        self.parent.mkdir(parents=True, exist_ok=True)
+        return super().write_bytes(data)
+
     def copy(
         self, target_path: str | pathlib.Path, preserve_metadata: bool = True
     ) -> File:
