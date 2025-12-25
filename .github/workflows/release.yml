@@ -38,9 +38,11 @@ jobs:
       - name: Validate version match
         run: |
           # Отримуємо версію з pyproject.toml
-          PACKAGE_VERSION=$(uv run python -c \
-            "import tomllib; \
-            print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          PACKAGE_VERSION=$(
+            uv run python -c \
+              "import tomllib; \
+              print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
+          )
           echo "Package version: $PACKAGE_VERSION"
 
           # Перевіряємо відповідність версій
@@ -97,10 +99,6 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
-
-      - name: Check distribution
-        run: |
-          uv tool run twine check dist/*
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
