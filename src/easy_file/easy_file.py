@@ -51,6 +51,8 @@ class File(pathlib.Path):
         'Hello, world!'
     """
 
+    __slots__ = ()  # Path вже має __slots__
+
     def open(  # type: ignore[override]
         self,
         mode: str = "r",
