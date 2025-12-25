@@ -109,7 +109,7 @@ print(data.port)  # 8080
 
 ### Async Methods
 
-Easy File provides asynchronous versions of all major I/O operations for non-blocking execution.
+Easy File provides asynchronous versions of all major I/O operations for non-blocking execution. All async methods use **aiofiles** for efficient non-blocking I/O operations.
 
 ```python
 import asyncio
@@ -138,6 +138,31 @@ async def main():
 
 asyncio.run(main())
 ```
+
+#### Batch File Reading
+
+Read multiple files in parallel using the `read_many_async()` class method:
+
+```python
+import asyncio
+from easy_file import File
+
+async def main():
+    # Create test files
+    File("file1.txt").write_text("Content 1")
+    File("file2.txt").write_text("Content 2")
+    File("file3.txt").write_text("Content 3")
+    
+    # Read all files in parallel
+    paths = ["file1.txt", "file2.txt", "file3.txt"]
+    contents = await File.read_many_async(paths)
+    
+    print(contents)  # ['Content 1', 'Content 2', 'Content 3']
+
+asyncio.run(main())
+```
+
+This is especially useful when you need to read many files at once, as it leverages asyncio to perform all reads concurrently.
 
 ### Atomic Writes
 
@@ -205,13 +230,13 @@ except FileOperationError as e:
 * `append_text(text)`
 
 ### Async Methods
-* `copy_async(target)`
-* `move_async(target)`
+* `copy_async(target)` / `move_async(target)`
 * `load_json_async(type=None)` / `dump_json_async(data, indent=2)`
 * `load_yaml_async(type=None)` / `dump_yaml_async(data)`
 * `read_text_async()` / `write_text_async(data)`
 * `read_bytes_async()` / `write_bytes_async(data)`
 * `append_text_async(text)`
+* `read_many_async(paths)` - Class method to read multiple files in parallel
 
 ### Properties
 * `size`: File size in bytes.
