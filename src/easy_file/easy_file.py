@@ -5,8 +5,6 @@ from __future__ import annotations
 import asyncio
 import os
 import pathlib
-import shutil
-import tempfile
 from contextlib import contextmanager, suppress
 from typing import Any, BinaryIO, TextIO, TypeVar, cast, overload
 
@@ -113,6 +111,8 @@ class File(pathlib.Path):
             >>> backup.read_text()
             'Original content'
         """
+        import shutil  # Lazy import
+
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -141,6 +141,8 @@ class File(pathlib.Path):
             >>> source.exists()
             False
         """
+        import shutil  # Lazy import
+
         target = File(target_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(self), str(target))
@@ -206,6 +208,8 @@ class File(pathlib.Path):
         Raises:
             OSError: If write or rename fails
         """
+        import tempfile  # Lazy import
+
         self.parent.mkdir(parents=True, exist_ok=True)
 
         tmp_path = None
@@ -341,6 +345,8 @@ class File(pathlib.Path):
             >>> f.read_text()
             'Atomic content'
         """
+        import tempfile  # Lazy import
+
         if encoding is not None and "b" in mode:
             raise ValueError("encoding argument not supported in binary mode")
 
